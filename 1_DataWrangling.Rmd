@@ -10,12 +10,13 @@ knitr::asis_output(htmltools::htmlPreserve("<br><br>"))
 ```
 
 
-This file is the first part of the UK Biobank comorbidity analysis. It does:  
+This file is the first part of the UK Biobank comorbidity analysis. It does all the boring data wrangling part of the Job:  
 
-* Take a few columns in the whole phenotypic file of the UKB  
-* Takes the ICD10 classification of disease and transform it in a workable format  
+* Create a Phenotype file from the whole UKB (**server only**)
+* Take the ICD10 classification (see [here](https://holtzy.github.io/Visualizing-the-ICD10-Classification/))
 * Explain how HES data were harvested and treated  
-* I calculate the Comorbidty matrix: gives the occurence of each disease and each pair of disease  
+* Calculate the Comorbidty matrix: gives the occurence of each **disease** and each **pair of disease** for the 3 levels of classification (data available [here](https://github.com/holtzy/UKB-Comorbidity/tree/master/0_DATA))  
+* Get heritability estimates of 303 diseaes from Neale's Lab (data available [here](https://github.com/holtzy/UKB-Comorbidity/tree/master/0_DATA))
 
 
 ```{r, message=FALSE, warning=FALSE}
@@ -263,7 +264,7 @@ rownames(data)=colnames(data)
 as.data.frame( data[1:5, 1:5] )
 ```
 
-Three version of this count table are thus provided and available on github: at level1, level2 and level3. 
+Three version of this count table are thus provided and available on [github](https://github.com/holtzy/UKB-Comorbidity/tree/master/0_DATA): at level1, level2 and level3. 
 
 
 
@@ -273,15 +274,14 @@ Three version of this count table are thus provided and available on github: at 
 
 #Heritability
 ***
-Recovered from the Neale Lab:
-This file has 770 column and 2420 diseases. So many information for each disease.
-We have 14 mental diseases here. And 642 diseases in total.
+Heritabilities of 303 diseaseas have been recovered from the Neale's lab website.
+We have 14 mental diseases here.
 ```{r}
 Herit=read.table("0_DATA/ukbb_all_h2part_results.txt", sep="\t", header = T)
 Herit=Herit[ substr(Herit$phenotype, 1, 1) %in% LETTERS , c(1:20) ]
 Herit=Herit %>% arrange(phenotype)
-dim(Herit)
-colnames(Herit)
+#dim(Herit)
+#colnames(Herit)
 Herit %>% head()
 ```
 

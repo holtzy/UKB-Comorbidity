@@ -3,10 +3,12 @@ output_dir: "."
 navbar:
   title: "Comorbidity in the UK Biobank"
   right:
-    - text: "start"
+    - text: "Intro"
       href: index.html
-    - text: "End"
+    - text: "Get data"
       href: 1_DataWrangling.html
+    - text: "explore UKB"
+      href: 2_Exploratory_Analysis.html
 output:
   html_document:
       theme: "lumen"

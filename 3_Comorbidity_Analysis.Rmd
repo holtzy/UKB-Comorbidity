@@ -1,0 +1,867 @@
+---
+title: "UKBiobank Comorbidity Analysis"
+author: "Yan Holtz | QBI"
+date: "October 2017"
+output:
+  rmdformats::readthedown:
+    code_folding: hide
+---
+
+
+This document analyse the comorbidity of mental diseases in the [UKBiobank](http://www.ukbiobank.ac.uk/data-showcase/) dataset. What it does:  
+
+  
+- 1/ Load the comorbidity matrix  
+- 2/ Calculate Comorbidity Index (CI) for each level  
+- 3/ Visualize it  
+
+TODO:
+- relationship my como / Danish Como
+- Relationship my prevalence / Danish prevalence
+- Improve visualization: htmlwidget edge bundle?
+- Improve CI computation: how to make something statistically more robust? How to have confidence interval?
+- Add heatmap level1
+- How to calculate a proper CI that takes into account the number of values (prevalence) ??
+
+
+
+
+
+
+# 1- Load Files and libraries
+
+
+## 1.0 Libraries
+A few libraries are necessary to run this analysis.
+```{r, message=FALSE, warning=FALSE}
+library(readr)
+library(tidyverse)
+library(treemap)
+library(RColorBrewer)
+library(lubridate)
+library(xtable)
+library(knitr)
+library(d3heatmap)
+library(plotly)
+#library(d3treeR)     # devtools::install_github("timelyportfolio/d3treeR")
+#library(d3Tree)
+library(ggraph)       # For edge bundle
+library(igraph)       # For edge bundle
+library(ggrepel)
+```
+
+
+
+## 1.1 ICD 10 Classification 
+
+The human diseases are classified by the [WHO](https://en.wikipedia.org/wiki/World_Health_Organization) (World Health Organization) disease classification ( International Statistical Classification of Diseases: [ICD](http://apps.who.int/classifications/icd10/browse/2010/en)). This file is quite huge: ~19000 lines. Each type of disease is coded. Example: A00=cholera. There are several nivel of classification. 
+
+There are 22 main categories, which are subdivided in **4 levels** of grouping. The file giving the ICD codes has been found [here](http://biobank.ctsu.ox.ac.uk/crystal/codown.cgi) the 24/08/2017. The subdivisions work as follow:
+
+````
+NODE 1: Infectious disease (Level 1) nodes= 1 - 22 (22 levels)
+   --	NODE 23: A00-A09 Intestinal infectious diseases   (Level 2 = group) nodes= 23 - 285 (262 levels)
+      -- NODE286: A00 Cholera  (Level 3 = subgroup) nodes= 286 - 19154 (1925 levels)
+         -- NODE287 A00.0 Cholera due to Vibrio cholerae 01, biovar cholerae  (Level 4 = subsubgroup)
+         -- NODE288 A00.1 Cholera due to Vibrio cholerae 01, biovar eltor  
+            -- NODE2881 something eventually, but not always, what makes the classification even more complicated. (Level 5 = subsubsubgroup) always 5 characters in code
+````
+
+We can load this file that has already been formatted in the step 0 of this pipeline.
+```{r}
+#Read the file
+load("~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/WHO_disease_classification_clean.R")
+```
+
+I now have a ICD table that looks like this:
+```{r  results='asis', fig.align="center"}
+kable(xtable(head(ICD, 3)))
+```
+
+
+I can search for a specific disease here:
+```{r}
+ICD[ grep("orexia", ICD$meaning_L4) , ]
+ICD %>% select(short, meaning_L1, meaning_L2) %>% unique
+ICD %>% select(short, meaning_L1) %>% unique
+```
+
+It is important to note that I have to delete some groups from my analysis:  
+
+- Chapter XX = External cuases of morbidity and mortality = Block V - W - X - Y . Exemple: "Accidental poisoning"
+- Chapter XXI = Factors influencing health status and contact with health services = Block Z  
+- Chapter XXII = Codes for special purposes = block U  
+
+
+Just a memo for the link letter - chapter
+```{r}
+ICD %>% mutate(letter=substr(meaning_L2,1,1)) %>% select( meaning_L1, letter) %>% unique
+```
+
+
+## 1.2 Como matrix
+The como matrices have been calculated previously (script 1_UKB_data_wrangling).  
+They are square matrix giving the number of time each pair of disease has been observed. It has been calculated for several levels of classification.  
+Let's load them level by level: the diagonal describes how many times a disease has been observed, and every other numbers describes how many time a pair of disease has been observed.
+
+###Level1
+```{r}
+# Load matrix
+comoL1=read.table("~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Como_Ocurrence_L1.txt.gz", sep=";", header=T)
+comoL1=as.matrix(comoL1)
+rownames(comoL1)=colnames(comoL1)
+comoL1[lower.tri(comoL1)] <- NA
+
+# Remove chapter 20 to 22 because it is not really disease
+tokeep=which( ! colnames(comoL1) %in% c("External.Causes","Factor.influencing","Special") )
+comoL1= comoL1[ tokeep, tokeep ]
+
+# Remove chapter with less than 100 case (remove perinatal chapter that is quite useless with 41 cases in total for the whole chapter)
+toremove = which( diag(comoL1) < 100 )
+length(toremove)
+comoL1= comoL1[ -toremove, -toremove ]
+dim(comoL1)
+
+# Create long format
+comoL1_long = comoL1 %>% as.data.frame() %>% cbind(disease1 = rownames(comoL1)) %>% gather(disease2, value, -disease1 ) %>% filter(!is.na(value))
+
+# Number of pair to analyse:
+(nrow(comoL1)^2 - nrow(comoL1)) /2
+nrow(comoL1_long) - nrow(comoL1)
+```
+
+```{r, results='asis', fig.align="center"}
+kable(xtable(comoL1[1:5, 1:5]))
+```
+
+The level1 has `nrow(comoL1)` levels (22 - 3 removed cause not real disease -1 for perinatal). That means `nrow(comoL1)^2/2` pairs to analyse
+
+
+
+###Level2
+Level2 has 262 levels at the begining. For further analysis, I add human readable names to column and row names.
+```{r}
+# Load matrix
+comoL2=read.table("~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Como_Ocurrence_L2.txt.gz", sep=";", header=T)
+comoL2=as.matrix(comoL2)
+rownames(comoL2)=colnames(comoL2)
+comoL2[lower.tri(comoL2)] <- NA
+
+# Add significant labels
+tomatch = colnames(comoL2) %>% gsub("Block.", "Block ", .) %>% gsub("\\.", "-", .)
+signif = ICD$meaning_L2[ match( tomatch, ICD$coding_L2) ] %>% droplevels
+colnames(comoL2)=signif
+rownames(comoL2)=signif
+
+# Remove categories in groups U to Z
+tokeep=which( ! substr(as.character(colnames(comoL2)),1,1) %in% c("U","V","W","X","Y","Z") )
+comoL2= comoL2[ tokeep, tokeep ]
+
+# Remove categories that are to rare (prevalence < 100)
+toremove = which( diag(comoL2) < 100 )
+length(toremove)
+comoL2= comoL2[ -toremove, -toremove ]
+dim(comoL2)
+
+# Create long format
+comoL2_long = comoL2 %>% as.data.frame() %>% cbind(disease1 = rownames(comoL2)) %>% gather(disease2, value, -disease1 ) %>% filter(!is.na(value))
+
+# Number of pairs
+(nrow(comoL2)^2 - nrow(comoL2)) /2
+nrow(comoL2_long) - nrow(comoL2)
+```
+
+```{r  results='asis', fig.align="center"}
+kable(xtable(comoL2[1:5, 1:5]))
+```
+
+The level2 now has `nrow(comoL2)` levels. That means `( nrow(comoL2)^2-nrow(comoL2) )/2` pairs to analyse
+
+
+
+
+###Level3
+Level3 has 1925 levels at the beginning. For further analysis, I add human readable names to column and row names.
+```{r}
+# Load matrix
+comoL3=read.table("~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Como_Ocurrence_L3.txt.gz", sep=";", header=T)
+comoL3=as.matrix(comoL3)
+rownames(comoL3)=colnames(comoL3)
+comoL3[lower.tri(comoL3)] <- NA
+
+# Add significant labels
+tomatch = colnames(comoL3)
+signif = ICD$meaning_L3[ match( tomatch, ICD$coding_L3) ] %>% droplevels
+colnames(comoL3)=signif
+rownames(comoL3)=signif
+
+# Remove categories in groups U to Z
+tokeep=which( ! substr(as.character(colnames(comoL3)),1,1) %in% c("U","V","W","X","Y","Z") )
+comoL3= comoL3[ tokeep, tokeep ]
+
+# Remove categories that are to rare (prevalence < 20)
+toremove = which( diag(comoL3) < 20 )
+length(toremove)
+comoL3= comoL3[ -toremove, -toremove ]
+dim(comoL3)
+
+# Create long format
+comoL3_long = comoL3 %>% as.data.frame() %>% cbind(disease1 = rownames(comoL3)) %>% gather(disease2, value, -disease1 ) %>% filter(!is.na(value))
+
+# Number of pairs
+(nrow(comoL3)^2 - nrow(comoL3)) /2
+nrow(comoL3_long) - nrow(comoL3)
+
+```
+
+```{r my_table2, results='asis', fig.align="center"}
+kable(xtable(comoL3[1:5, 1:5]))
+```
+
+The level2 has `nrow(comoL3)` levels. That means `(nrow(comoL3)^2-nrow(comoL3))/2` pairs to analyse
+
+
+
+
+
+
+
+
+
+
+
+
+# 2- Calculate como index
+
+We define the comorbidity index (CI) by CI = P(D1-D2) / P(D1)*P(D2) with P(D1) beeing the proportion of people having the disease 1.
+So from the count matrix we have it's quite straight forward to calculate CIs.
+
+## Level1
+Let's use a smart way to calculate it --> make it instantly! I output 2 formats: long and square
+```{r}
+# First, I transform the number of occurence of each disease / pair of disease in a proportion.
+tmp=comoL1/500000
+
+# Then, I calculate every product P(D1) * P(D2)
+first=rep(diag(tmp), nrow(tmp))
+second=rep(diag(tmp), each=nrow(tmp))
+multi=first*second
+
+# Now I can calculate the fraction of both
+CI_L1=tmp/multi
+
+# The diagonal does not mean anything, I have to remove it.
+diag(CI_L1)=NA
+
+# Save it as .csv
+write.table(CI_L1, file="~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Comorbidity_Index_Matrix_Level1.csv", sep=";", quote=F, dec=",")
+
+# And make a long format (always useful)
+tmp=CI_L1
+tmp=as.data.frame(tmp)
+tmp$D1=rownames(tmp)
+tmp=gather(tmp, "D2", "value", -D1)
+CI_L1_long=na.omit(tmp)
+```
+
+
+
+## Level2
+Let's use a smart way to calculate it --> make it instantly! I output 2 formats: long and square
+```{r}
+# First, I transform the number of occurence of each disease / pair of disease in a proportion.
+tmp=comoL2/500000
+
+# Then, I calculate every product P(D1) * P(D2)
+first=rep(diag(tmp), nrow(tmp))
+second=rep(diag(tmp), each=nrow(tmp))
+multi=first*second
+
+# Now I can calculate the fraction of both
+CI_L2=tmp/multi
+
+# The diagonal does not mean anything, I have to remove it.
+diag(CI_L2)=NA
+
+# Save it as .csv
+write.table(CI_L2, file="~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Comorbidity_Index_Matrix_Level2.csv", sep=";", quote=F, dec=",")
+
+# And make a long format (always useful)
+tmp=CI_L2
+tmp=as.data.frame(tmp)
+tmp$D1=rownames(tmp)
+tmp=gather(tmp, "D2", "value", -D1)
+CI_L2_long=na.omit(tmp)
+```
+
+
+
+## Level3
+Let's use a smart way to calculate it --> make it instantly! I output 2 formats: long and square
+```{r}
+# First, I transform the number of occurence of each disease / pair of disease in a proportion.
+tmp=comoL3/500000
+
+# Then, I calculate every product P(D1) * P(D2)
+first=rep(diag(tmp), nrow(tmp))
+second=rep(diag(tmp), each=nrow(tmp))
+multi=first*second
+
+# Now I can calculate the fraction of both
+CI_L3=tmp/multi
+
+# The diagonal does not mean anything, I have to remove it.
+diag(CI_L3)=NA
+
+# Save it as .csv
+write.table(CI_L3, file="~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Comorbidity_Index_Matrix_Level3.csv", sep=";", quote=F, dec=",")
+
+# And make a long format (always useful)
+tmp=CI_L3
+tmp=as.data.frame(tmp)
+tmp$D1=rownames(tmp)
+tmp=gather(tmp, "D2", "value", -D1)
+CI_L3_long=na.omit(tmp)
+```
+
+
+
+
+## Save
+It could be handy to save all these matrices as a unique R object for further analysis
+```{r}
+save(comoL1, comoL1_long, comoL2, comoL2_long, comoL3, comoL3_long, CI_L1, CI_L1_long, CI_L2, CI_L2_long, CI_L3, CI_L3_long, file="~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Como_Objects.R")
+```
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+ Load files
+```{r}
+load("~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Como_Objects.R")
+``` 
+ 
+ 
+
+# 3- Prevalence of individual disease
+
+Let's check what group disorder is the most frequent? Already done in another RMD but always good to double check:
+```{r, warning=FALSE, message=FALSE}
+comoL1_long %>% ungroup() %>% filter(disease1 == disease2) %>% arrange(value) %>% mutate(disease1 =factor(disease1 , disease1 )) %>%
+  ggplot( aes(x=disease1, y=value)) +
+    geom_bar(stat="identity", fill='skyblue') +
+    xlab("") +
+    ylab("Number of cases in the UKB") +
+    coord_flip()
+```
+  
+OK, it's interesting to note that it's not uniformaly distributed at ALL. More than 150K are concerned by Digestive problems. Mental=39391, what is ~8% of the population. Should be way more.
+
+Show this data in a table:
+```{r results='asis', fig.align="center"}
+tmp=comoL1_long %>% ungroup() %>% filter(disease1 == disease2) %>% arrange(desc(value)) %>% mutate(disease1 =factor(disease1 , disease1 )) %>% select(disease1, value)
+kable(xtable(tmp))
+```
+
+
+What about the level2?
+```{r, warning=FALSE, message=FALSE}
+comoL2_long %>% ungroup() %>% filter(disease1 == disease2) %>% arrange(value) %>% mutate(disease1 =factor(disease1 , disease1 )) %>%
+  head(20) %>%
+  ggplot( aes(x=disease1, y=value)) +
+    geom_bar(stat="identity", fill='skyblue') +
+    xlab("") +
+    ylab("Number of cases in the UKB") +
+    coord_flip()
+```
+
+
+
+
+Just a quick comparison with Andrea's data. In his tool he says prevalence of R19 is 11987 people. I have:
+```{r}
+comoL3_long %>% filter( substr(disease1, 1 , 3) == "R19") %>% filter(disease1==disease2)
+```
+It is way more, but he uses only first diagnoses whearas I used first AND second diagnosis.
+
+And what are the most associated diseases?
+```{r}
+CI_L3_long %>% filter( substr(D1, 1 , 3) == "R19") %>% arrange(desc(value)) %>% head(100)
+```
+
+
+Can I compare these value with litterature? Pedersen et al, Danish register.
+```{r, fig.}
+pedersen=read.table("~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Occurence_Mental_Disease_Litterature.csv", sep=";", header=T)
+
+p=comoL3_long %>% 
+  filter(disease1==disease2) %>% 
+  mutate( code=substr(disease1,1,3)) %>% 
+  select(code, disease1, value) %>%
+  mutate(value=value/500000*100) %>%
+  left_join( . , pedersen, by=c("code"="Disease")) %>%
+  filter(!is.na(Pedersen_Danish_Incidence_Male)) %>%
+  #filter(value<4000) %>%
+  ggplot( aes(x=value, y=Pedersen_Danish_Incidence_Female, label=disease1)) +
+    geom_point(size=3) +
+    geom_text_repel(size=3, color="grey") +
+    xlab("Prevalence in UKB") +
+    ylab("Pedersen et al.") +
+    xlim(0,4) +
+    ylim(0,4)
+p
+p +  scale_x_log10() + xlab("Prevalence in UKB (Log scale)")
+```
+
+
+Distribution of the prevalence of level3
+```{r}
+comoL3_long %>% filter(disease1==disease2)%>%
+  ggplot( aes(x=value) ) +
+    geom_density( fill="skyblue", color=NA, alpha=0.6) +
+    scale_x_log10( breaks=c(10,100,1000,10000,100000) , labels = scales::comma) +
+    xlab("Occurence in # of cases") +
+    geom_vline(xintercept = 500, linetype="dashed")
+    
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 4- Como occurence matrix
+
+How many diseases do we have for each level:   
+Level1: `r nrow(CI_L1_long)` ; Subgroup:  `r nrow(CI_L2_long)` ; Level3: `r nrow(CI_L3_long)`  
+Knowing that we have 500K individuals, working with so many sub-subgroups does not make sense!  
+Working with Subgroup could may be possible, but we have to expect that some pair of disease will be really rare. Thus their related comorbidity index will be very imprecise.
+The best option is thus probably to work with groups, or doing a new classification like Oleguer and John did. Make sense.
+
+
+## Distribution
+
+What is the distribution of the number of patient with each pair?
+```{r, warning=FALSE, message=FALSE}
+comoL1_long %>%
+  filter(disease1 != disease2) %>%
+  ggplot( aes(x=value)) + 
+    geom_histogram(bins=90, fill=rgb(0.2,0.4,0.6,0.6)) +
+    ggtitle(paste("Level1"," | ", nrow(comoL1), " levels", " | ", nrow(comoL1)^2/2, " pairs", " | ", nrow(comoL1_long[which(comoL1_long$value==0),]), " pairs with 0 person", " | ", "average = ", round(mean(comoL1_long$value),0), sep="")) +
+    xlab("Number of people with the disease pair") 
+```
+
+At the level 2 I have 420 pairs with no patient at all. And a lot of pairs with a few patient only.. How can I handle this when I calculate comorbidity Index?
+```{r, warning=FALSE, message=FALSE}
+comoL2_long %>%
+  filter(disease1 != disease2) %>%
+  ggplot( aes(x=value)) + 
+    geom_histogram(bins=90, fill=rgb(0.2,0.4,0.6,0.6)) +
+    ggtitle(paste("Level2"," | ", nrow(comoL2), " levels", " | ", nrow(comoL2)^2/2, " pairs", " | ", nrow(comoL2_long[which(comoL2_long$value==0),]), " pairs with 0 person", " | ", "average = ", round(mean(comoL2_long$value),0), sep="")) +
+    xlab("Number of people with the disease pair") +
+    scale_x_log10()
+
+```
+
+```{r, warning=FALSE, message=FALSE}
+comoL3_long %>%
+  filter(disease1 != disease2) %>%
+  ggplot( aes(x=value)) + 
+    geom_histogram(bins=90, fill=rgb(0.2,0.4,0.6,0.6)) +
+    ggtitle(paste("Level3"," | ", nrow(comoL3), " levels", " | ", nrow(comoL3)^2/2, " pairs", " | ", nrow(comoL3_long[which(comoL3_long$value==0),]), " pairs with 0 person", " | ", "average = ", round(mean(comoL3_long$value),0), sep="")) +
+    xlab("Number of people with the disease pair")+
+    scale_x_log10()
+```
+
+
+## Extreme value.
+
+What are the extreme values = pairs of disease with many many people?
+```{r}
+comoL1_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% head(10)
+comoL2_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% head(10)
+comoL3_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% head(10)
+```
+
+
+See the occurence matrix as a heatmap:
+```{r}
+tmp=comoL1
+diag(tmp)=NA
+d3heatmap(tmp, Rowv=FALSE, Colv=FALSE, cexRow=0.7, cexCol=0.7, color="Blues")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+# 5- CI matrix
+
+
+## Distribution 
+
+We have a lot of 0 = pair of disease has never been observed. Most of the value are then between 0 and 20 what makes sense. And we have some extreme value due to very rare disease.
+```{r, warning=FALSE, message=FALSE}
+CI_L1_long %>%
+  filter(value<100) %>%
+  ggplot( aes(x=value)) + 
+    geom_histogram(bins=90, fill=rgb(0.2,0.4,0.6,0.6)) +
+    ggtitle(paste("Level1"," | ", nrow(comoL1), " levels", " | ", nrow(comoL1)^2/2, " pairs", " | ", nrow(CI_L1_long[which(CI_L1_long$value==0),]), " pairs with 0 person", " | ", "median = ", round(median(CI_L1_long$value),0), sep="")) +
+    #scale_x_log10() +
+    theme_classic() +
+    geom_vline(xintercept=1, linetype="dashed") +
+    theme(
+      axis.line = element_blank(),
+      axis.title=element_text(size=12)
+    ) +
+  xlab("Comorbidity index (Log scale)") 
+```
+
+Distribution of CI at level 2: 
+```{r, warning=FALSE, message=FALSE}
+CI_L2_long %>%
+  ggplot( aes(x=value)) + 
+    geom_histogram(bins=90, fill=rgb(0.2,0.4,0.6,0.6)) +
+    ggtitle(paste("Level2"," | ", nrow(comoL2), " levels", " | ", nrow(comoL2)^2/2, " pairs", " | ", nrow(CI_L2_long[which(CI_L2_long$value==0),]), " pairs with 0 person", " | ", "median = ", round(median(CI_L2_long$value),2), sep="")) +
+    scale_x_log10() +
+    theme_classic() +
+    geom_vline(xintercept=1, linetype="dashed") +
+    theme(
+      axis.line = element_blank(),
+      axis.title=element_text(size=12)
+    ) +
+  xlab("Comorbidity index (Log scale)") 
+```
+
+
+Distribution of CI at level 3: 
+```{r, warning=FALSE, message=FALSE}
+CI_L3_long %>%
+  #filter(value<100) %>%
+  ggplot( aes(x=value)) + 
+    geom_histogram(bins=90, fill=rgb(0.2,0.4,0.6,0.6)) +
+    ggtitle(paste("Level3"," | ", nrow(comoL3), " levels", " | ", nrow(comoL3)^2/2, " pairs", " | ", nrow(CI_L3_long[which(CI_L3_long$value==0),]), " pairs with 0 person", " | ", "median = ", round(median(CI_L3_long$value),2), sep="")) +
+    scale_x_log10() +
+    theme_classic() +
+    geom_vline(xintercept=1, linetype="dashed") +
+    theme(
+      axis.line = element_blank(),
+      axis.title=element_text(size=12)
+    ) +
+  xlab("Comorbidity index (Log scale)") 
+```
+
+
+Same thing, but faceting by level1. A few thoughts:  
+- extreme CI value comes for groups C and T  
+- J, O and F (mental), have really strong CI.
+- R has a lot of <1 CI.
+
+```{r, warning=FALSE, message=FALSE}
+CI_L2_long %>%
+  mutate(level1.1=substring(D1,1,1)) %>%
+  mutate(level1.2=substring(D2,1,1)) %>%
+  mutate(group=ifelse(level1.1 == level1.2, level1.1, NA )) %>%
+  filter(!is.na(group)) %>%
+  droplevels() %>%
+  #filter(value<100) %>%
+  ggplot( aes(x=value+1, fill=group)) + 
+    #geom_histogram(bins=90, fill=rgb(0.2,0.4,0.6,0.6)) +
+    geom_density() +
+    scale_x_log10() +
+    theme_classic() +
+    geom_vline(xintercept=2, linetype="dashed") +
+    theme(
+      legend.position="none",
+      axis.line = element_blank(),
+      axis.title=element_text(size=12),
+      axis.ticks.y  = element_blank(),
+      axis.text.y = element_blank(),
+      strip.background = element_rect(colour = "transparent" ),
+      strip.text.x = element_text(margin = margin(0,0,0,0, "cm"))
+    ) +
+  facet_wrap(~group, scale="free_y") +
+  xlab("Comorbidity index (Log scale)") 
+```
+
+
+
+
+
+
+Same thing, but with boxplots instead. Without the log scale it allows to understand where the outliers are: T, Q, F, C, B
+```{r, warning=FALSE, message=FALSE}
+CI_L2_long %>%
+  mutate(level1.1=substring(D1,1,1)) %>%
+  mutate(level1.2=substring(D2,1,1)) %>%
+  mutate(group=ifelse(level1.1 == level1.2, level1.1, NA )) %>%
+  filter(!is.na(group)) %>%
+  droplevels() %>%
+  ggplot( aes(x=group, fill=group, y=value)) + 
+    geom_boxplot() +
+    theme_classic() +
+    geom_hline(yintercept=1, linetype="dashed") +
+    theme(
+      legend.position="none",
+      axis.line = element_blank(),
+      axis.title=element_text(size=12),
+      #axis.ticks.y  = element_blank(),
+      #axis.text.y = element_blank(),
+    ) +
+  xlab("Comorbidity index (Log scale)") 
+```
+
+
+
+
+With a log scale we can compare the groups. Interesting to see that highest comorbidity index are the one concerning Mental diseases. The group O is impressive. O = Chapter XV = Pregnancy, childbirth and the puerperium
+```{r, warning=FALSE, message=FALSE, fig.width=13, fig.height=4}
+CI_L2_long %>%
+  mutate(level1.1=substring(D1,1,1)) %>%
+  mutate(level1.2=substring(D2,1,1)) %>%
+  mutate(group=ifelse(level1.1 == level1.2, level1.1, NA )) %>%
+  filter(!is.na(group)) %>%
+  mutate(color=ifelse(group=="F", "Mental Diseases", "Other")) %>%
+  droplevels() %>%
+  ggplot( aes(x=reorder(group, value), fill=color, colour=color, y=value+1)) + 
+    geom_violin(width=3) +
+    theme_classic() +
+    geom_hline(yintercept=2, linetype="dashed") +
+    scale_y_log10() +
+    theme(
+      legend.position="none",
+      axis.line = element_blank(),
+      axis.title=element_text(size=12)
+    ) +
+  xlab("Groups (level1)") +
+  ylab("Comorbidity Index (Log)")
+```
+
+The comorbidity index is 1 if the pair of disease occurs only by chance. It is less than 1 if a disease prevent of developping the second one. It is over 1 if there is a comorbidity effect: having a disease increases the chance to develop the second one.
+
+
+
+
+
+
+## Extreme values
+
+What are the 5 strongest comorbidity index?
+
+Level1
+```{r results='asis', fig.align="center"}
+tab=CI_L1_long %>% arrange(desc(value)) %>% head(5)
+kable(xtable(tab))
+```
+
+
+Level2
+```{r results='asis', fig.align="center"}
+tab=CI_L2_long %>% arrange(desc(value)) %>% head(10)
+tab
+```
+
+Extreme CI values for level 3? What are they?
+```{r results='asis', fig.align="center"}
+# Add the information of the occurence for each pair.
+tmp=comoL3_long %>% filter(disease1==disease2) %>% mutate(occurence=value) %>% select(disease1, occurence)
+tab=CI_L3_long %>% 
+  left_join(., comoL3_long, by=c("D1"="disease1", "D2"="disease2")) %>%
+  left_join(., tmp, by=c("D1"="disease1")) %>%
+  left_join(., tmp, by=c("D2"="disease1")) %>%
+  arrange(desc(value.x)) %>% head(10)
+tab  
+```
+
+And what about the value < 1?
+```{r results='asis', fig.align="center"}
+# Add the information of the occurence for each pair.
+tmp=comoL3_long %>% filter(disease1==disease2) %>% mutate(occurence=value) %>% select(disease1, occurence)
+tab=CI_L3_long %>% 
+  left_join(., comoL3_long, by=c("D1"="disease1", "D2"="disease2")) %>%
+  left_join(., tmp, by=c("D1"="disease1")) %>%
+  left_join(., tmp, by=c("D2"="disease1")) %>%
+  rowwise() %>% mutate(occurence_mean = mean(c(occurence.x, occurence.y))) %>%
+  arrange(value.x, desc(occurence_mean))
+tab
+```
+
+And what if we keep only low value but with high occurence of both diseases of the pair?
+```{r results='asis', fig.align="center"}
+# Add the information of the occurence for each pair.
+tmp=comoL3_long %>% filter(disease1==disease2) %>% mutate(occurence=value) %>% select(disease1, occurence)
+tab=CI_L3_long %>% 
+  left_join(., comoL3_long, by=c("D1"="disease1", "D2"="disease2")) %>%
+  left_join(., tmp, by=c("D1"="disease1")) %>%
+  left_join(., tmp, by=c("D2"="disease1")) %>%
+  rowwise() %>% mutate(occurence_mean = mean(c(occurence.x, occurence.y))) %>%
+  arrange(value.x, desc(occurence_mean)) 
+a=tab  %>% filter(occurence.x>10000, occurence.y>10000)
+```
+
+
+
+
+Let's start with a basic heatmap of the comorbidity index at level 1. Here I just display the matrix as it is, without clustering.
+```{r}
+d3heatmap(CI_L1, Rowv=FALSE, Colv=FALSE, cexRow=0.7, cexCol=0.7, xaxis_height = 100, yaxis_width = 100)
+```
+
+
+If we use clusterisation with euclidean distance. Here, what has an impact is the average value of CI. Thus disease like that have a few really high CI are together.
+```{r}
+#d3heatmap(CI_L1, distfun = dist, cexRow=0.7, cexCol=0.7, xaxis_height = 100, yaxis_width = 100)
+```
+
+
+If we use clusterisation with pearson correlation. This time, we check if the pattern of CI are similar from one disease to another. Like 
+```{r}
+#d3heatmap(CI_L1, cexRow=0.7, cexCol=0.7, distfun=function(x){as.dist(1-cor(t(x),use="pairwise.complete.obs")/2)} )
+#, hclust=function(x) hclust(x,method="complete")}   )
+```
+
+
+
+
+
+
+
+
+
+
+
+# 6 - Hierarchical Edge Bundling all groups
+
+Can we try to visualize data through hierarchical edge bundling?
+```{r, warning=FALSE, message=FALSE}
+
+# Create edges data frame. I start with the leaf level only
+edges=ICD %>% filter(meaning_L2 %in% colnames(comoL2) ) %>% select(meaning_L1, meaning_L2) %>% unique
+colnames(edges)=c("from", "to")
+
+# Create points data frame. For each point I need it's size (num of occurence of the disease) + its group (to set its color)
+vertices = data.frame(name = unique( as.character(edges$to)) ) 
+tmp=comoL2_long %>% filter(disease1 == disease2) %>% select(disease1, val=value)
+vertices = merge(vertices, tmp, by.x="name", by.y="disease1", all.x=T)
+vertices = merge( vertices, ICD, by.x="name", by.y = "meaning_L2", all.x=T) %>% select(name, val, meaning_L1) %>% unique
+
+# calculate the ANGLE of the labels
+my_num=nrow(vertices)
+vertices$index=seq(1, nrow(vertices))
+vertices$angle= 90 - 360 * vertices$index/my_num
+
+# calculate the alignment of labels: right or left
+# If I am on the left part of the plot, my labels have currently an angle < -90
+vertices$hjust<-ifelse( vertices$angle < -90, 1, 0)
+
+# flip angle BY to make them readable
+vertices$angle<-ifelse(vertices$angle < -90, vertices$angle+180, vertices$angle)
+
+# Reduce lenght of names
+vertices = vertices %>% mutate( labels=name)
+
+# Add the upper part of the tree = not final leaves to edges
+top = ICD %>% select(meaning_L1) %>% mutate(origine=0) %>% select(origine, meaning_L1) %>% unique %>% mutate()
+colnames(top)=c("from", "to")
+edges=rbind(top, edges)
+
+# and add it to vertices
+toadd=data.frame(name=c(0,as.character(top$to)) ,val=NA ,meaning_L1=NA, index=NA, angle=NA, hjust=NA, labels=NA)
+vertices=rbind(toadd, vertices)
+#colnames(a)=c("from", "to")
+```
+
+
+```{r, fig.width=15, fig.height=15, warning=FALSE, message=FALSE}
+
+back_color="white"
+
+# Create graph structure
+mygraph <- graph_from_data_frame( edges, vertices = vertices)
+
+# Transform the adjacency connection of comorbidity index in 2 vectors: from and to.
+threshold=10
+connexions = CI_L2_long %>% filter(value>threshold) %>% select(D1, D2)
+from = match( connexions$D1, vertices$name)
+to = match( connexions$D2, vertices$name)
+
+# Do the graph
+p=ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
+    geom_conn_bundle(data = get_con(from = from, to = to), alpha = 0.2, tension = 0.9, aes(size=11, colour = ..index..)) + 
+    # Make the size depends how often we see the disease?
+    geom_node_point(aes(filter = leaf, x = x*1.05, y=y*1.05, size=val, colour=meaning_L1), alpha=0.6) +
+    scale_color_manual(values= colorRampPalette(brewer.pal(9,"Paired"))(22)[sample(seq(1,22),22)]) +
+    scale_size_continuous(range = c(0.5,11)) +
+    geom_node_text(aes(x = x*1.1, y=y*1.1, filter = leaf, label=labels, angle = angle, color=meaning_L1, hjust=hjust), size=1.5, alpha=1) +
+    coord_fixed() +
+    labs(x="", y="") +
+    theme_classic() +
+    theme(
+        legend.position="none",
+        axis.title=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(),
+        line = element_blank(),
+        plot.margin=unit(c(0,0,0,0),"cm"),
+        plot.background = element_rect(fill = back_color),
+        panel.background = element_rect(fill = back_color, colour=back_color)
+    ) +
+    expand_limits(x = c(-2, 2), y = c(-2, 2))
+    #geom_segment( x = 2, y = 2, xend = 10, yend = 10, colour = "black", alpha=1, size=4 , inherit.aes = FALSE ) +
+
+# save as png?
+png("/Users/y.holtz/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/3_FIGURE/Edge_Bundle_Como_L2.png", width=200, height=200, units = "mm", res=300)
+p
+dev.off()
+```
+
+Here we are:
+![snp](/Users/y.holtz/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/3_FIGURE/Edge_Bundle_Como_L2.png)
+
+
+
+
+# 7 - Zoom on one disease?
+
+Let's find a few visualization for one specific disease?
+```{r}
+tosearch="bipola"
+```
+
+The first step is to find it in the ICD10 classification. (At level3)
+```{r}
+ICD %>% .[grep(tosearch, ICD$meaning_L3, ignore.case =T) , ]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

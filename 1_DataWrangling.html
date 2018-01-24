@@ -194,10 +194,13 @@ $(document).ready(function () {
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="index.html">start</a>
+  <a href="index.html">Intro</a>
 </li>
 <li>
-  <a href="1_DataWrangling.html">End</a>
+  <a href="1_DataWrangling.html">Get data</a>
+</li>
+<li>
+  <a href="2_Exploratory_Analysis.html">explore UKB</a>
 </li>
       </ul>
     </div><!--/.nav-collapse -->
@@ -224,15 +227,15 @@ $(document).ready(function () {
 
 
 <br><br>
-<p>This file is the first part of the UK Biobank comorbidity analysis. It does:</p>
+<p>This file is the first part of the UK Biobank comorbidity analysis. It does all the boring data wrangling part of the Job:</p>
 <ul>
-<li>Take a few columns in the whole phenotypic file of the UKB<br />
-</li>
-<li>Takes the ICD10 classification of disease and transform it in a workable format<br />
-</li>
+<li>Create a Phenotype file from the whole UKB (<strong>server only</strong>)</li>
+<li>Take the ICD10 classification (see <a href="https://holtzy.github.io/Visualizing-the-ICD10-Classification/">here</a>)</li>
 <li>Explain how HES data were harvested and treated<br />
 </li>
-<li>I calculate the Comorbidty matrix: gives the occurence of each disease and each pair of disease</li>
+<li>Calculate the Comorbidty matrix: gives the occurence of each <strong>disease</strong> and each <strong>pair of disease</strong> for the 3 levels of classification (data available <a href="https://github.com/holtzy/UKB-Comorbidity/tree/master/0_DATA">here</a>)<br />
+</li>
+<li>Get heritability estimates of 303 diseaes from Neale’s Lab (data available <a href="https://github.com/holtzy/UKB-Comorbidity/tree/master/0_DATA">here</a>)</li>
 </ul>
 <pre class="r"><code># We will need a few library to run this document
 library(tidyverse)
@@ -411,26 +414,19 @@ as.data.frame( data[1:5, 1:5] )</code></pre>
 {"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["musculoskeletal"],"name":[1],"type":["int"],"align":["right"]},{"label":["Factor.influencing"],"name":[2],"type":["int"],"align":["right"]},{"label":["Injury"],"name":[3],"type":["int"],"align":["right"]},{"label":["Blood.Immune"],"name":[4],"type":["int"],"align":["right"]},{"label":["Genitourinary"],"name":[5],"type":["int"],"align":["right"]}],"data":[{"1":"134376","2":"90374","3":"34808","4":"15252","5":"47446","_rn_":"musculoskeletal"},{"1":"90374","2":"212945","3":"50915","4":"24902","5":"78997","_rn_":"Factor.influencing"},{"1":"34808","2":"50915","3":"74848","4":"9985","5":"26826","_rn_":"Injury"},{"1":"15252","2":"24902","3":"9985","4":"31446","5":"14636","_rn_":"Blood.Immune"},{"1":"47446","2":"78997","3":"26826","4":"14636","5":"122548","_rn_":"Genitourinary"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
+<p>Three version of this count table are thus provided and available on <a href="https://github.com/holtzy/UKB-Comorbidity/tree/master/0_DATA">github</a>: at level1, level2 and level3.</p>
 </div>
 </div>
 <div id="heritability" class="section level1">
 <h1><span class="header-section-number">5</span> Heritability</h1>
 <hr />
-<p>Recovered from the Neale Lab: This file has 770 column and 2420 diseases. So many information for each disease. We have 14 mental diseases here. And 642 diseases in total.</p>
+<p>Heritabilities of 303 diseaseas have been recovered from the Neale’s lab website. We have 14 mental diseases here.</p>
 <pre class="r"><code>Herit=read.table(&quot;0_DATA/ukbb_all_h2part_results.txt&quot;, sep=&quot;\t&quot;, header = T)
 Herit=Herit[ substr(Herit$phenotype, 1, 1) %in% LETTERS , c(1:20) ]
 Herit=Herit %&gt;% arrange(phenotype)
-dim(Herit)</code></pre>
-<pre><code>## [1] 303  20</code></pre>
-<pre class="r"><code>colnames(Herit)</code></pre>
-<pre><code>##  [1] &quot;phenotype&quot;       &quot;description&quot;     &quot;N&quot;              
-##  [4] &quot;N_case&quot;          &quot;N_control&quot;       &quot;prevelence&quot;     
-##  [7] &quot;mean_chi2&quot;       &quot;lambdaGC&quot;        &quot;intercept&quot;      
-## [10] &quot;intercept_se&quot;    &quot;intercept_z&quot;     &quot;intercept_p&quot;    
-## [13] &quot;ratio&quot;           &quot;ratio_se&quot;        &quot;h2_observed&quot;    
-## [16] &quot;h2_observed_se&quot;  &quot;h2_liability&quot;    &quot;h2_liability_se&quot;
-## [19] &quot;h2_z&quot;            &quot;h2_p&quot;</code></pre>
-<pre class="r"><code>Herit %&gt;% head()</code></pre>
+#dim(Herit)
+#colnames(Herit)
+Herit %&gt;% head()</code></pre>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
 {"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["phenotype"],"name":[1],"type":["fctr"],"align":["left"]},{"label":["description"],"name":[2],"type":["fctr"],"align":["left"]},{"label":["N"],"name":[3],"type":["int"],"align":["right"]},{"label":["N_case"],"name":[4],"type":["int"],"align":["right"]},{"label":["N_control"],"name":[5],"type":["int"],"align":["right"]},{"label":["prevelence"],"name":[6],"type":["dbl"],"align":["right"]},{"label":["mean_chi2"],"name":[7],"type":["dbl"],"align":["right"]},{"label":["lambdaGC"],"name":[8],"type":["dbl"],"align":["right"]},{"label":["intercept"],"name":[9],"type":["dbl"],"align":["right"]},{"label":["intercept_se"],"name":[10],"type":["dbl"],"align":["right"]},{"label":["intercept_z"],"name":[11],"type":["dbl"],"align":["right"]},{"label":["intercept_p"],"name":[12],"type":["dbl"],"align":["right"]},{"label":["ratio"],"name":[13],"type":["dbl"],"align":["right"]},{"label":["ratio_se"],"name":[14],"type":["dbl"],"align":["right"]},{"label":["h2_observed"],"name":[15],"type":["dbl"],"align":["right"]},{"label":["h2_observed_se"],"name":[16],"type":["dbl"],"align":["right"]},{"label":["h2_liability"],"name":[17],"type":["dbl"],"align":["right"]},{"label":["h2_liability_se"],"name":[18],"type":["dbl"],"align":["right"]},{"label":["h2_z"],"name":[19],"type":["dbl"],"align":["right"]},{"label":["h2_p"],"name":[20],"type":["dbl"],"align":["right"]}],"data":[{"1":"A04","2":"Diagnoses - main ICD10: A04 Other bacterial intestinal infections","3":"337199","4":"535","5":"336664","6":"0.001586600","7":"1.0183712","8":"1.0188369","9":"0.9966452","10":"0.008276166","11":"-0.4053559","12":"0.65739202","13":"-0.1826116","14":"0.4504969","15":"0.0028095833","16":"0.002241071","17":"0.16872483","18":"0.1345838","19":"1.2536790","20":"0.1049793","_rn_":"1"},{"1":"A41","2":"Diagnoses - main ICD10: A41 Other septicaemia","3":"337199","4":"383","5":"336816","6":"0.001135830","7":"1.0039766","8":"1.0073638","9":"1.0108026","10":"0.008004370","11":"1.3495908","12":"0.08857364","13":"2.7165308","14":"2.0128551","15":"-0.0017452369","16":"0.002170532","17":"-0.13826934","18":"0.1719641","19":"-0.8040595","20":"0.7893187","_rn_":"2"},{"1":"A63","2":"Diagnoses - main ICD10: A63 Other predominantly sexually transmitted diseases, not elsewhere classified","3":"337199","4":"104","5":"337095","6":"0.000308423","7":"0.9877491","8":"0.9900488","9":"0.9919709","10":"0.008191342","11":"-0.9801896","12":"0.83650373","13":"NA","14":"NA","15":"-0.0004110605","16":"0.002020145","17":"-0.09839155","18":"0.4835424","19":"-0.2034807","20":"0.5806203","_rn_":"3"},{"1":"A87","2":"Diagnoses - main ICD10: A87 Viral meningitis","3":"337199","4":"99","5":"337100","6":"0.000293595","7":"0.9976410","8":"0.9988046","9":"1.0035362","10":"0.008345291","11":"0.4237400","12":"0.33587771","13":"NA","14":"NA","15":"-0.0027615436","16":"0.002247142","17":"-0.68967349","18":"0.5612057","19":"-1.2289139","20":"0.8904480","_rn_":"4"},{"1":"B02","2":"Diagnoses - main ICD10: B02 Zoster [herpes zoster]","3":"337199","4":"111","5":"337088","6":"0.000329182","7":"0.9932130","8":"1.0005049","9":"1.0171686","10":"0.008697340","11":"1.9740115","12":"0.02419022","13":"NA","14":"NA","15":"-0.0044459925","16":"0.002064065","17":"-1.00617118","18":"0.4671180","19":"-2.1539981","20":"0.9843798","_rn_":"5"},{"1":"B18","2":"Diagnoses - main ICD10: B18 Chronic viral hepatitis","3":"337199","4":"107","5":"337092","6":"0.000317320","7":"0.9983473","8":"0.9968526","9":"1.0057417","10":"0.009299706","11":"0.6174027","12":"0.26848458","13":"NA","14":"NA","15":"-0.0013849028","16":"0.002480363","17":"-0.32347240","18":"0.5793395","19":"-0.5583469","20":"0.7116962","_rn_":"6"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}

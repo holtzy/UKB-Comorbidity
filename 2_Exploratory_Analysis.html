@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="by Yan Holtz - 24 January 2018" />
+
+
+<title>UKBiobank Exploratory Analysis</title>
+
+<script src="site_libs/jquery-1.12.4/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/lumen.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="site_libs/pagedtable-1.1/js/pagedtable.js"></script>
+<script src="site_libs/htmlwidgets-1.0/htmlwidgets.js"></script>
+<script src="site_libs/datatables-binding-0.2/datatables.js"></script>
+<link href="site_libs/dt-core-1.10.12/css/jquery.dataTables.min.css" rel="stylesheet" />
+<link href="site_libs/dt-core-1.10.12/css/jquery.dataTables.extra.css" rel="stylesheet" />
+<script src="site_libs/dt-core-1.10.12/js/jquery.dataTables.min.js"></script>
+<link href="site_libs/nouislider-7.0.10/jquery.nouislider.min.css" rel="stylesheet" />
+<script src="site_libs/nouislider-7.0.10/jquery.nouislider.min.js"></script>
+<link href="site_libs/selectize-0.12.0/selectize.bootstrap3.css" rel="stylesheet" />
+<script src="site_libs/selectize-0.12.0/selectize.min.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 54px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+
+.section h2 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+.section h3 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+.section h4 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+.section h5 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+.section h6 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Comorbidity in the UK Biobank</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="index.html">Intro</a>
+</li>
+<li>
+  <a href="1_DataWrangling.html">Get data</a>
+</li>
+<li>
+  <a href="2_Exploratory_Analysis.html">explore UKB</a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+<a href="https://github.com/holtzy/" class="github-corner" aria-label="View source on Github"><svg width="80" height="80" viewBox="0 0 250 250" style="fill:#2ecc71; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style>
+
+<div class="fluid-row" id="header">
+
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">UKBiobank Exploratory Analysis</h1>
+<h4 class="author"><em>by <a href="https://github.com/holtzy/">Yan Holtz</a> - 24 January 2018</em></h4>
+
+</div>
+
+
+<br><br>
+<p>This document is a first <strong>exploratory analysis</strong> of the <a href="http://www.ukbiobank.ac.uk/data-showcase/">UKBiobank</a> dataset. It describes basic features, and aims to check what we are going to be able to do concerning <strong>mental disease</strong> and <strong>comorbidity</strong>. Basically it shows:</p>
+<ul>
+<li>Load files<br />
+</li>
+<li>Global overview of the UKB: who, where, what age, period of time..<br />
+</li>
+<li>ICD10 diseases: what are the most frequent?<br />
+</li>
+<li>Focus on mental diseases</li>
+</ul>
+<div id="load-files-and-libraries" class="section level1 tabset tabset-fade tabset-pills">
+<h1><span class="header-section-number">1</span> Load Files and libraries</h1>
+<hr />
+<div id="phenotype" class="section level2">
+<h2><span class="header-section-number">1.1</span> Phenotype</h2>
+<p>A few libraries are necessary to run this analysis.</p>
+<pre class="r"><code>library(readr)
+library(tidyverse)
+library(treemap)
+library(RColorBrewer)
+library(lubridate)
+library(xtable)
+library(knitr)
+library(DT)</code></pre>
+<p>The UKB dataset is quite heavy (~2G). It contains about <strong>500 000 individuals</strong>. I selected only a few fields, targeting general stuff + time stamp + mental disease. Let’s load the dataset:</p>
+<pre class="r"><code># Read the data already takes minutes.
+nline=5000
+data=read_tsv(&quot;0_DATA/UKB_phenos.txt.gz&quot;, n_max=nline)</code></pre>
+<p>Just a quick check to the individual ID of each line. They should be unique, since each line represent one person. And the number are random. This is important coz it means that a link with the dataset of someone else is impossible. Do I have repeated ID?</p>
+<pre class="r"><code>a=table(data[,1])
+cat(&quot;ok&quot;)</code></pre>
+<pre><code>## ok</code></pre>
+</div>
+<div id="icd10" class="section level2">
+<h2><span class="header-section-number">1.2</span> ICD10</h2>
+<p>The human diseases are classified by the <a href="https://en.wikipedia.org/wiki/World_Health_Organization">WHO</a> (World Health Organization) disease classification ( International Statistical Classification of Diseases: <a href="http://apps.who.int/classifications/icd10/browse/2010/en">ICD</a>). This file is quite huge: ~19000 lines. Each type of disease is coded. Example: A00=cholera. There are several nivel of classification.</p>
+<p>This document is described extensively here. Let’s load it and have a look to it:</p>
+<pre class="r"><code>#Read the file
+load(&quot;0_DATA/WHO_disease_classification_clean.R&quot;)
+head(ICD)</code></pre>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["node_L1"],"name":[1],"type":["int"],"align":["right"]},{"label":["node_L4"],"name":[2],"type":["int"],"align":["right"]},{"label":["node_L3"],"name":[3],"type":["int"],"align":["right"]},{"label":["node_L2"],"name":[4],"type":["int"],"align":["right"]},{"label":["coding_L1"],"name":[5],"type":["fctr"],"align":["left"]},{"label":["meaning_L1"],"name":[6],"type":["fctr"],"align":["left"]},{"label":["parent_L1"],"name":[7],"type":["int"],"align":["right"]},{"label":["coding_L2"],"name":[8],"type":["fctr"],"align":["left"]},{"label":["meaning_L2"],"name":[9],"type":["fctr"],"align":["left"]},{"label":["coding_L3"],"name":[10],"type":["fctr"],"align":["left"]},{"label":["meaning_L3"],"name":[11],"type":["fctr"],"align":["left"]},{"label":["coding_L4"],"name":[12],"type":["fctr"],"align":["left"]},{"label":["meaning_L4"],"name":[13],"type":["fctr"],"align":["left"]},{"label":["coding_L5"],"name":[14],"type":["fctr"],"align":["left"]},{"label":["meaning_L5"],"name":[15],"type":["fctr"],"align":["left"]},{"label":["node_L5"],"name":[16],"type":["int"],"align":["right"]},{"label":["short"],"name":[17],"type":["fctr"],"align":["left"]},{"label":["long"],"name":[18],"type":["fctr"],"align":["left"]}],"data":[{"1":"1","2":"287","3":"286","4":"23","5":"Chapter I","6":"Chapter I Certain infectious and parasitic diseases","7":"0","8":"Block A00-A09","9":"A00-A09 Intestinal infectious diseases","10":"A00","11":"A00 Cholera","12":"A000","13":"A00.0 Cholera due to Vibrio cholerae 01, biovar cholerae","14":"NA","15":"NA","16":"NA","17":"Infectious-Parasitic","18":"Certain infectious and parasitic diseases","_rn_":"1"},{"1":"1","2":"288","3":"286","4":"23","5":"Chapter I","6":"Chapter I Certain infectious and parasitic diseases","7":"0","8":"Block A00-A09","9":"A00-A09 Intestinal infectious diseases","10":"A00","11":"A00 Cholera","12":"A001","13":"A00.1 Cholera due to Vibrio cholerae 01, biovar el tor","14":"NA","15":"NA","16":"NA","17":"Infectious-Parasitic","18":"Certain infectious and parasitic diseases","_rn_":"2"},{"1":"1","2":"289","3":"286","4":"23","5":"Chapter I","6":"Chapter I Certain infectious and parasitic diseases","7":"0","8":"Block A00-A09","9":"A00-A09 Intestinal infectious diseases","10":"A00","11":"A00 Cholera","12":"A009","13":"A00.9 Cholera, unspecified","14":"NA","15":"NA","16":"NA","17":"Infectious-Parasitic","18":"Certain infectious and parasitic diseases","_rn_":"3"},{"1":"1","2":"291","3":"290","4":"23","5":"Chapter I","6":"Chapter I Certain infectious and parasitic diseases","7":"0","8":"Block A00-A09","9":"A00-A09 Intestinal infectious diseases","10":"A01","11":"A01 Typhoid and paratyphoid fevers","12":"A010","13":"A01.0 Typhoid fever","14":"NA","15":"NA","16":"NA","17":"Infectious-Parasitic","18":"Certain infectious and parasitic diseases","_rn_":"4"},{"1":"1","2":"292","3":"290","4":"23","5":"Chapter I","6":"Chapter I Certain infectious and parasitic diseases","7":"0","8":"Block A00-A09","9":"A00-A09 Intestinal infectious diseases","10":"A01","11":"A01 Typhoid and paratyphoid fevers","12":"A011","13":"A01.1 Paratyphoid fever A","14":"NA","15":"NA","16":"NA","17":"Infectious-Parasitic","18":"Certain infectious and parasitic diseases","_rn_":"5"},{"1":"1","2":"293","3":"290","4":"23","5":"Chapter I","6":"Chapter I Certain infectious and parasitic diseases","7":"0","8":"Block A00-A09","9":"A00-A09 Intestinal infectious diseases","10":"A01","11":"A01 Typhoid and paratyphoid fevers","12":"A012","13":"A01.2 Paratyphoid fever B","14":"NA","15":"NA","16":"NA","17":"Infectious-Parasitic","18":"Certain infectious and parasitic diseases","_rn_":"6"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+</div>
+<div id="hospital-episode-data" class="section level2">
+<h2><span class="header-section-number">1.3</span> Hospital Episode Data</h2>
+<p>Suppose somebody has 3 ICD10 diseases. We are highly interested to know WHEN each disease was discovered. The phenotype file provides us with the number of time somebody has been to the hospital. But an external file is needed to know when it was.<br />
+The HES (Hospital Episode Statistics) data provides this information.</p>
+<p>Load it:</p>
+<pre class="r"><code>#HES=read_tsv(&quot;/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/RECORD_REPOSITORY/ukb_hesin.tsv&quot;)</code></pre>
+<p>Note that we need a bridge file to make the links with the phenotype because this info comes from the application of John, not the one from Naomi and Peter like for the phenotype.</p>
+<pre class="r"><code>#bridge=read_delim(&quot;/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/ukb_bridgingfile_12505_10214.txt&quot;, delim=&quot; &quot;)</code></pre>
+</div>
+</div>
+<div id="general-features" class="section level1 tabset tabset-fade tabset-pills">
+<h1><span class="header-section-number">2</span> General features</h1>
+<hr />
+<div id="sex" class="section level2">
+<h2><span class="header-section-number">2.1</span> Sex</h2>
+<p>Sex is coded with 0 (women) and 1 (male).</p>
+<pre class="r"><code># The column is coded with 0=female and 1=male
+t=table(data$f.31.0.0)
+a=t[1]
+b=t[2]
+c=round(a/nrow(data)*100 , 2)
+d=round(b/nrow(data)*100 , 2)</code></pre>
+<p>In the dataset I have 2784 women (55.68%) and 2216 men (44.32%).</p>
+</div>
+<div id="height" class="section level2">
+<h2><span class="header-section-number">2.2</span> Height</h2>
+<p>Apparently height has been measured 3 times, thus 3 columns are available in the dataset. Sometimes, the same person has been measured several times, allowing to estimate the repeatability of the height measurment.</p>
+<pre class="r"><code>tmp=data[ , c(&quot;f.50.0.0&quot;, &quot;f.50.1.0&quot;, &quot;f.50.2.0&quot; )]
+my_cor=cor(data$f.50.0.0, data$f.50.1.0, use=&quot;complete.obs&quot;)
+ggplot(tmp, aes(x=f.50.0.0, y=f.50.1.0)) +
+  geom_hex(bins=40) +
+  labs(
+    x=&quot;first measurement (cm)&quot;,
+    y=&quot;second measurement (cm)&quot;,
+    title=&quot;Correlation between 2 height measurements&quot;,
+    subtitle=paste(&quot;Correlation of pearson=&quot;, round(my_cor,2))
+    )+
+  theme(legend.position=&quot;none&quot;)</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<pre class="r"><code>#help(geom_bin2d)</code></pre>
+</div>
+<div id="place-of-birth" class="section level2">
+<h2><span class="header-section-number">2.3</span> Place of birth</h2>
+<p>3 columns are available for the place of birth. Sometimes, several distincts values are provided for the same individual what is a bit weird. Let’s have a look to the UK map?</p>
+<pre class="r"><code>data %&gt;%
+  #head(1000) %&gt;%
+  ggplot( aes(y=f.129.0.0, x=f.130.0.0) ) +
+    #stat_density_2d(geom = &quot;raster&quot;, aes(fill = log(..density..)), contour = FALSE) +
+    geom_point(alpha=0.05, size=0.8) +
+    theme_minimal() +
+    labs(
+      x=&quot;&quot;,
+      y=&quot;&quot;,
+      title=&quot;Where UKBiobank people were born&quot;,
+      sub=paste(&quot;n:&quot;,nrow(data))
+    ) +
+  theme(
+    legend.position=&quot;none&quot;,
+    axis.title=element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank(),
+    panel.grid=element_blank(),
+    panel.background = element_rect(color=&quot;black&quot;, fill= alpha(&quot;skyblue&quot;,0.1))
+  )</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+</div>
+<div id="ukb-center-of-assessment" class="section level2">
+<h2><span class="header-section-number">2.4</span> UKB center of assessment</h2>
+<p>There are 24 UKB center all around UK. Here is an idea of their importance:</p>
+<pre class="r"><code>data %&gt;%
+  select(f.54.0.0) %&gt;% 
+  table() %&gt;%
+  data.frame() %&gt;% 
+  arrange(Freq) %&gt;%   
+  mutate(center = factor(., .)) %&gt;%
+  ggplot(aes(x=center, y=Freq)) +
+    geom_bar(stat=&quot;identity&quot;, fill=&quot;skyblue&quot;) +
+    labs(
+      x=&quot;assesment center&quot;,
+      y=&quot;Number of assesment realized during the study&quot;,
+      title=&quot;Most important UKB Assessments centers&quot;
+    ) +
+    coord_flip()</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+</div>
+<div id="body-mass-index" class="section level2">
+<h2><span class="header-section-number">2.5</span> Body Mass index</h2>
+<p>One more time we have 3 columns for the same trait. Let’s check the correlation between measurements made on the same individuals.</p>
+<pre class="r"><code>#data %&gt;% head() %&gt;% select(&quot;f.21001.0.0&quot;, &quot;f.21001.1.0&quot;)
+ggplot(data, aes(x=f.21001.0.0, y=f.21001.1.0)) +
+  geom_hex(bins=40) +
+  labs(
+    title=&quot;Correlation between 2 BMI measurements&quot;,
+    subtitle=paste(&quot;Correlation of pearson=&quot;, round(my_cor,2))
+    ) </code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>Let’s compare the distribution of IMB for male and female?</p>
+<pre class="r"><code># Prepare 2 vectors, one per sex
+fem=data %&gt;% filter(f.31.0.0==0) %&gt;% select(f.21001.0.0) 
+mal=data %&gt;% filter(f.31.0.0==1) %&gt;% select(f.21001.0.0) 
+  
+# Plot
+ggplot() + 
+  geom_density(data=fem, aes(x = f.21001.0.0, y = ..density..), fill=&quot;pink&quot;, alpha=0.3) +
+  geom_density(data=mal, aes(x = f.21001.0.0, y = -..density..), fill=&quot;blue&quot;, alpha=0.3) +
+  xlab(&quot;Body Mass Index&quot;) +
+  ylim(-0.12, 0.12) +
+  #annotate(&quot;text&quot;, x = c(50,50), y = c(0.07, -0.07), label = c(&quot;Women&quot;, &quot;Men&quot;)) + # , color=c(alpha(&quot;pink&quot;,0.7), alpha(&quot;blue&quot;,0.3)), size=6 , angle=0, fontface=&quot;bold&quot;) +
+  coord_flip() +
+  ggtitle(&quot;Distribution of the Body Mass Index (BMI) for Men and Women&quot;)</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+</div>
+<div id="origin" class="section level2">
+<h2><span class="header-section-number">2.6</span> Origin</h2>
+<p>The ethnical background is known, but encoded. The first step is to get the encription key: it allows to go from a number to a human readable origin.</p>
+<pre class="r"><code>ethni_key=data.frame(
+  code=c(&quot;1&quot;,&quot;1001&quot;,&quot;2001&quot;,&quot;3001&quot;,&quot;4001&quot;,&quot;2&quot;,&quot;1002&quot;,&quot;2002&quot;,&quot;3002&quot;,&quot;4002&quot;,&quot;3&quot;,&quot;1003&quot;,&quot;2003&quot;,&quot;3003&quot;,&quot;4003&quot;,&quot;4&quot;,&quot;2004&quot;,&quot;3004&quot;,&quot;5&quot;,&quot;6&quot;,&quot;-1&quot;,&quot;-3&quot;),
+  value=c(&quot;White&quot;,&quot;British&quot;,&quot;White and Black Caribbean&quot;,&quot;Indian&quot;,&quot;Caribbean&quot;,&quot;Mixed&quot;,&quot;Irish&quot;,&quot;White and Black African&quot;,&quot;Pakistani&quot;,&quot;African&quot;,&quot;Asian or Asian British&quot;,&quot;Any other white background&quot;,&quot;White and Asian&quot;,&quot;Bangladeshi&quot;,&quot;Any other Black background&quot;,&quot;Black or Black British&quot;,&quot;Any other mixed background&quot;,&quot;Any other Asian background&quot;,&quot;Chinese&quot;,&quot;Other ethnic group&quot;,&quot;Do not know&quot;,&quot;Prefer not to answer&quot;)
+)
+#ethni_key</code></pre>
+<p>Now let’s check howmany people are in each group? And represent that with a treemap</p>
+<pre class="r"><code># prepare data
+data$f.21000.0.0=as.factor(data$f.21000.0.0)
+tmp=as.data.frame(table( data$f.21000.0.0 ))
+colnames(tmp)=c(&quot;code&quot;,&quot;freq&quot;)
+tmp$value=ethni_key$value[ match( tmp$code, ethni_key$code ) ]
+
+# make the treemap
+treemap(tmp, index=c(&quot;value&quot;), vSize=&quot;freq&quot;, type=&quot;index&quot;,
+        inflate.labels=T,
+        fontface.labels=1,
+        fontsize.labels=2)</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-15-1.png" width="672" /></p>
+<p>Relation between age and ethnical origin? It gives an insight of the evolution of the foreigners in the UK !</p>
+<pre class="r"><code># needs to be a factor
+data$f.21000.0.0=as.factor(data$f.21000.0.0)
+
+# Create a color palette as long as needed
+getPalette = colorRampPalette(brewer.pal(9, &quot;Set1&quot;))
+
+# plot the stackbarplot
+data %&gt;%
+  filter(f.21000.0.0 != 1001 &amp; f.21000.0.0 != 2 &amp; f.21000.0.0 != 4 ) %&gt;%
+  ggplot(aes(x=f.21022.0.0, group=f.21000.0.0, fill=f.21000.0.0)) +
+  geom_bar(position=&quot;fill&quot;)+
+  labs(
+    x=&quot;Age at the beginning of the survey&quot;,
+    title=&quot;Proportion of minor ethnical origins in the UKBiobank Dataset&quot;
+  )+
+  scale_fill_manual(name=&quot;Ethnical Origin&quot;, breaks=tmp$code, labels=tmp$value, values = colorRampPalette(brewer.pal(11,&quot;Set1&quot;))(22)) </code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+</div>
+</div>
+<div id="time-stamp" class="section level1 tabset tabset-fade tabset-pills">
+<h1><span class="header-section-number">3</span> Time stamp</h1>
+<hr />
+<div id="attending" class="section level2">
+<h2><span class="header-section-number">3.1</span> Attending</h2>
+<p>Let’s show the number of assessment that have been done each week between 2006 and 2010. Apparently, a few first trials have been done on 2006. Then the experiment really started on the 20th week of 2007 and finish on the 30th week of 2010.</p>
+<pre class="r"><code># Change the format of this column, it must be a date.
+data$f.53.0.0=as.Date(data$f.53.0.0)
+
+# Change format with lubridate and show the data with ggplot2.
+data %&gt;%
+  mutate(year=year(f.53.0.0), week=week(f.53.0.0)) %&gt;%
+  ggplot( aes(x=week, fill=year)) +
+    geom_histogram() +
+    facet_wrap(~year, scales = &quot;fixed&quot;, nrow=1) +
+    ylab(&quot;number of assessment realized each week&quot;) +
+    theme(
+      legend.position=&quot;none&quot;
+    )</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+</div>
+<div id="recruitment" class="section level2">
+<h2><span class="header-section-number">3.2</span> Recruitment</h2>
+<p>What is the age of people at rectruitement?</p>
+<pre class="r"><code>ggplot(data, aes(x=f.21022.0.0)) +
+  geom_histogram(fill=&quot;skyblue&quot;, color=&quot;white&quot;, alpha=0.7) +
+  xlab(&quot;Age at recruitment&quot;) +
+  ggtitle(paste(&quot;Age at recruitment | f.21022.0.0 | n=&quot;,nrow(data), &quot; | average=&quot;, round(mean(data$f.21022.0.0),1 ) ) )</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-18-1.png" width="672" /></p>
+</div>
+<div id="death" class="section level2">
+<h2><span class="header-section-number">3.3</span> Death</h2>
+<p>There are a lot of NA in this field –&gt; that’s the people who are still alive. Let’s visualize the distribution of the date of death of people:</p>
+<pre class="r"><code># needs to be a date to be plotted properly
+data$f.40000.0.0=as.Date(data$f.40000.0.0)
+
+# plot
+data %&gt;% 
+  mutate(week=week(f.40000.0.0), year=year(f.40000.0.0)) %&gt;%
+  ggplot(aes(x=week)) +
+    geom_histogram(fill=&quot;red&quot;, color=&quot;white&quot;, alpha=0.4) +
+    xlab(&quot;Date of death&quot;) +
+    ggtitle(paste(&quot;Age at recruitment | f.21022.0.0 | n=&quot;,nrow(data), &quot; | average=&quot;, round(mean(data$f.21022.0.0),1 ) ) ) +
+    facet_wrap(~year)</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-19-1.png" width="672" /></p>
+<pre class="r"><code>dead=length(which(!is.na(data$f.40000.0.0)))
+tot=nrow(data)
+prop=dead/tot*100
+prop</code></pre>
+<pre><code>## [1] 3.08</code></pre>
+<p>So some people are dead DURING the experiment. Others are dead after the last assessment. Some are still alive. The proporstion of dead people is 3.08.</p>
+</div>
+<div id="age-at-death" class="section level2">
+<h2><span class="header-section-number">3.4</span> Age at death</h2>
+<p>I know the date of death + the age at death, so I can easily calculate the birth data if neccessary.</p>
+<pre class="r"><code>ggplot(data, aes(x=f.40007.0.0)) +
+  geom_histogram(fill=&quot;skyblue&quot;, color=&quot;white&quot;, alpha=0.7) +
+  xlab(&quot;Age at death&quot;) +
+  ggtitle(paste(&quot;Age at death | f.40007.0.0 | n=&quot;,nrow(data), &quot; | average=&quot;, round(mean(data$f.40007.0.0, na.rm=T),1 ) ) )</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-21-1.png" width="672" /></p>
+</div>
+<div id="date-of-admission-to-hospital" class="section level2">
+<h2><span class="header-section-number">3.5</span> Date of admission to hospital</h2>
+<p>There is a column named “Data of admission to hospital”: f.41096.0.0. Here is the distribution of this variable:</p>
+<pre class="r"><code>data %&gt;%
+  filter(f.41096.0.0&lt;50) %&gt;%
+  ggplot(aes(x=f.41096.0.0)) +
+    geom_histogram(fill=&quot;skyblue&quot;, color=&quot;white&quot;, alpha=0.7) +
+    xlab(&quot;Value of f.41096.0.0, with only value &lt; 50&quot;) +
+    ggtitle(paste(&quot;Distribution of f.41096.0.0 | n=&quot;,nrow(data), &quot; | max=&quot;, max(data$f.41096.0.0, na.rm=T) ) )</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
+<p>Relationship with the number of “date of dicharge”</p>
+<pre class="r"><code>data %&gt;%
+  filter(f.41096.0.0&lt;50) %&gt;%
+  ggplot(aes(x=f.41096.0.0, y=f.41101.0.0)) +
+    geom_hex()</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-23-1.png" width="672" /></p>
+<p>Sometimes I have several column for the same phenotype. Does each column correspond to a specific date?</p>
+</div>
+</div>
+<div id="diseases-all" class="section level1 tabset tabset-fade tabset-pills">
+<h1><span class="header-section-number">4</span> Diseases (all)</h1>
+<hr />
+<p>When someone is sick, its diseases is classified in one of the ICD categories. The corresponding code are written in the field f.41202.0.to f.41202.0.379 for the <strong>first</strong> diagnoses. A second diagnoses can be found and thus writtent in the fields f.41204.0.0 to f.41204.0.434.</p>
+<div id="most-important-diseases" class="section level2">
+<h2><span class="header-section-number">4.1</span> Most important diseases</h2>
+<p>The diseases are encoded. In order to understand the data, I need to merge that with the ICD data frame that explains the codes. I am going to count the occurence of each disease, and add the signification of each in the same table. Note that I use every column of both ICD10 primary AND secondary diagnoses:</p>
+<pre class="r"><code>dis_freq=data %&gt;% 
+  select(  f.41202.0.0:f.41202.0.379  ,  f.41204.0.0:f.41204.0.434  ) %&gt;%
+  gather(key=&#39;column&#39;, value=&#39;disease&#39;) %&gt;%
+  na.omit() %&gt;%
+  group_by(disease) %&gt;%
+  count() %&gt;%
+  left_join(ICD, by = c(&quot;disease&quot; = &quot;coding_L4&quot;))</code></pre>
+<p>dis_freq = occurence of each ICD10 code!</p>
+<p>We can do a treemap to see the importance of the 22 groups of diseases?</p>
+<pre class="r"><code># count the occurence of each category
+tmp = dis_freq %&gt;%
+  group_by(short) %&gt;%
+  summarize(tot=sum(n)) %&gt;%
+  na.omit()
+
+
+# basic treemap 
+p=treemap(tmp,
+            index=c(&quot;short&quot;),
+            vSize=&quot;tot&quot;,
+            type=&quot;index&quot;
+            )            </code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-25-1.png" width="672" /></p>
+<pre class="r"><code># make it interactive (&quot;rootname&quot; becomes the title of the plot):
+#inter=d3tree2( p ,  rootname = &quot;General&quot; )</code></pre>
+<p>Another way to visualize that:</p>
+<pre class="r"><code>tmp %&gt;%
+  arrange(tot) %&gt;%   
+  mutate(short = factor(short, short)) %&gt;%
+  mutate(mycol=ifelse(short==&quot;Mental&quot;,&quot;Mental&quot;,&quot;other&quot;)) %&gt;%
+  ggplot(aes(x=short, y=tot, fill=mycol)) +
+    geom_bar(stat=&quot;identity&quot;) +
+    labs(
+      x=&quot;Disease category&quot;,
+      y=&quot;Number of case&quot;,
+      title=&quot;Most common diseases observed in the UKB study&quot;,
+      subtitle=&quot;primary AND secondary diagnoses&quot;
+    ) +
+    theme(legend.position=&quot;none&quot;) +
+    coord_flip()</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-26-1.png" width="672" /></p>
+</div>
+<div id="number-of-disease-per-person" class="section level2">
+<h2><span class="header-section-number">4.2</span> Number of disease per person</h2>
+<p>What is the proportion of people with no disease at all? The proportion of people with 1 disease ONLY?</p>
+<pre class="r"><code>data %&gt;% 
+    select(  f.41202.0.0:f.41202.0.379  ,  f.41204.0.0:f.41204.0.434    ) %&gt;%
+    is.na %&gt;%
+    `!` %&gt;% 
+    rowSums %&gt;%
+    table() %&gt;%
+    data.frame() %&gt;%
+    ggplot(aes(x=., y=Freq)) +
+      geom_bar(stat=&quot;identity&quot;) +
+      xlab(&quot;number od disease&quot;) +
+      ylab(&quot;number of people&quot;) +
+      ggtitle(&quot;number of people with X disease in the UKB&quot;) +
+      coord_flip()  </code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-27-1.png" width="672" /></p>
+</div>
+<div id="number-of-people-with-disease" class="section level2">
+<h2><span class="header-section-number">4.3</span> Number of people with disease</h2>
+<p>For each diagnosis, the patient fills the first column if he has a disease on its first visit to the hospital. Then, eventually a second one if he goes back to the hospital and another disease is found and so on. So the number of disease in the column1 is &gt; at the column 2 &gt; column 3…</p>
+<p>Let’s visualize it for the first diagnosis.</p>
+<pre class="r"><code>first=which(colnames(data)==&quot;f.41202.0.0&quot;)
+my_prop=c()
+for(i in c(1:379)){
+  a=data[ , first+i-1]
+  with=length(which(!is.na(a)))
+  tot=nrow(data)
+  prop=with/tot*100
+  my_prop=c(my_prop,prop)
+}
+barplot(my_prop, xlim=c(0,52), xlab=&quot;number of NON na value in each ICD column&quot;)</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-28-1.png" width="672" /></p>
+<p>OK, so only the 52 first columns have data, others are only NA actually. Is it possible to have a field with a disease if the field just before was NA? Does it happen?</p>
+<pre class="r"><code>nrow(data[ is.na(data$f.41202.0.0) &amp; !is.na(data$f.41202.0.1) , ])</code></pre>
+<p><strong>NO</strong>. So if someone has no disease, he has NA in every column. If someone has 1 disease, his first column ONLY is filled… and so on.</p>
+</div>
+</div>
+<div id="mental-diseases" class="section level1 tabset tabset-fade tabset-pills">
+<h1><span class="header-section-number">5</span> Mental diseases</h1>
+<hr />
+<p>The ICD is organized in 22 categories. The 5th category is the one that is going to interest us: <strong>Mental and behavioural disorders</strong>. It means the disorders of psychological development. The codes related to this category always start with a <strong>F</strong>.</p>
+<div id="sumstat" class="section level2">
+<h2><span class="header-section-number">5.1</span> Sumstat</h2>
+<pre class="r"><code>nmental = tmp %&gt;% filter(short==&quot;Mental&quot;) %&gt;% select(&#39;tot&#39;)
+pmental = nmental / nrow(data) * 100 </code></pre>
+<p>In the UKB dataset, 625 people have been diagnosed with one or more mental disease. It represents 12.5 % of the population following this dataset. But there is a bias! : If somebody has several mental diseases, this script counts it like if it was several patients! –&gt; need another method to calculate that.</p>
+<p>Let’s build a subset of the UKB with only people concerned by mental disease.</p>
+<pre class="r"><code>mental=dis_freq %&gt;%
+  filter(node_L1==5) %&gt;%
+  select(disease, n, meaning_L4, meaning_L3, meaning_L2, short)</code></pre>
+<p>The architecture of mental diseases is presented in a dedicated document.</p>
+<p>We have 66 different mental diseases that have been observed (level 4), displayed in 28 category of level 3, and in 9 category of level2.</p>
+</div>
+<div id="occurence" class="section level2 tabset tabset-fade tabset-pills">
+<h2><span class="header-section-number">5.2</span> Occurence</h2>
+<p>Occurence of these groups and subgroups can be seen as follow.</p>
+<div id="treemap" class="section level3">
+<h3><span class="header-section-number">5.2.1</span> Treemap</h3>
+<pre class="r"><code># basic treemap 
+p=treemap(mental,
+            index=c(&quot;meaning_L2&quot;, &quot;meaning_L3&quot;),
+            vSize=&quot;n&quot;,
+            type=&quot;index&quot;
+            )            </code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-32-1.png" width="960" /></p>
+</div>
+<div id="table" class="section level3">
+<h3><span class="header-section-number">5.2.2</span> Table</h3>
+<p>Here is the detail of the most common mental diseases:</p>
+<pre class="r"><code>tmp = mental %&gt;% arrange(desc(n)) %&gt;% mutate(inPerc= n/nrow(data) * 100)
+
+datatable(tmp, filter = &#39;top&#39;, rownames = FALSE )</code></pre>
+<div id="htmlwidget-d3f11b5ced9ea43980fa" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-d3f11b5ced9ea43980fa">{"x":{"filter":"top","filterHTML":"<tr>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"integer\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"display: none; position: absolute; width: 200px;\">\n      <div data-min=\"1\" data-max=\"148\"><\/div>\n      <span style=\"float: left;\"><\/span>\n      <span style=\"float: right;\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;F00.9 Dementia in Alzheimer&#39;s disease, unspecified&quot;,&quot;F01.9 Vascular dementia, unspecified&quot;,&quot;F02.8 Dementia in other specified diseases classified elsewhere&quot;,&quot;F05.8 Other delirium&quot;,&quot;F05.9 Delirium, unspecified&quot;,&quot;F06.7 Mild cognitive disorder&quot;,&quot;F07.2 Postconcussional syndrome&quot;,&quot;F10.0 Acute intoxication&quot;,&quot;F10.1 Harmful use&quot;,&quot;F10.2 Dependence syndrome&quot;,&quot;F10.3 Withdrawal state&quot;,&quot;F10.4 Withdrawal state with delirium&quot;,&quot;F10.5 Psychotic disorder&quot;,&quot;F10.9 Unspecified mental and behavioural disorder&quot;,&quot;F12.1 Harmful use&quot;,&quot;F12.2 Dependence syndrome&quot;,&quot;F17.1 Harmful use&quot;,&quot;F17.2 Dependence syndrome&quot;,&quot;F20.0 Paranoid schizophrenia&quot;,&quot;F20.5 Residual schizophrenia&quot;,&quot;F20.9 Schizophrenia, unspecified&quot;,&quot;F22.0 Delusional disorder&quot;,&quot;F22.9 Persistent delusional disorder, unspecified&quot;,&quot;F23.0 Acute polymorphic psychotic disorder without symptoms of schizophrenia&quot;,&quot;F23.2 Acute schizophrenia-like psychotic disorder&quot;,&quot;F23.9 Acute and transient psychotic disorder, unspecified&quot;,&quot;F25.9 Schizoaffective disorder, unspecified&quot;,&quot;F31.0 Bipolar affective disorder, current episode hypomanic&quot;,&quot;F31.1 Bipolar affective disorder, current episode manic without psychotic symptoms&quot;,&quot;F31.2 Bipolar affective disorder, current episode manic with psychotic symptoms&quot;,&quot;F31.3 Bipolar affective disorder, current episode mild or moderate depression&quot;,&quot;F31.4 Bipolar affective disorder, current episode severe depression without psychotic symptoms&quot;,&quot;F31.6 Bipolar affective disorder, current episode mixed&quot;,&quot;F31.9 Bipolar affective disorder, unspecified&quot;,&quot;F32.0 Mild depressive episode&quot;,&quot;F32.1 Moderate depressive episode&quot;,&quot;F32.2 Severe depressive episode without psychotic symptoms&quot;,&quot;F32.3 Severe depressive episode with psychotic symptoms&quot;,&quot;F32.8 Other depressive episodes&quot;,&quot;F32.9 Depressive episode, unspecified&quot;,&quot;F33.2 Recurrent depressive disorder, current episode severe without psychotic symptoms&quot;,&quot;F33.3 Recurrent depressive disorder, current episode severe with psychotic symptoms&quot;,&quot;F33.4 Recurrent depressive disorder, currently in remission&quot;,&quot;F33.9 Recurrent depressive disorder, unspecified&quot;,&quot;F40.2 Specific (isolated) phobias&quot;,&quot;F41.0 Panic disorder [episodic paroxysmal anxiety]&quot;,&quot;F41.1 Generalised anxiety disorder&quot;,&quot;F41.2 Mixed anxiety and depressive disorder&quot;,&quot;F41.9 Anxiety disorder, unspecified&quot;,&quot;F43.0 Acute stress reaction&quot;,&quot;F43.1 Posttraumatic stress disorder&quot;,&quot;F43.2 Adjustment disorders&quot;,&quot;F44.3 Trance and possession disorders&quot;,&quot;F44.4 Dissociative motor disorders&quot;,&quot;F45.0 Somatisation disorder&quot;,&quot;F45.3 Somatoform autonomic dysfunction&quot;,&quot;F45.8 Other somatoform disorders&quot;,&quot;F51.0 Nonorganic insomnia&quot;,&quot;F52.2 Failure of genital response&quot;,&quot;F60.3 Emotionally unstable personality disorder&quot;,&quot;F60.6 Anxious [avoidant] personality disorder&quot;,&quot;F60.9 Personality disorder, unspecified&quot;,&quot;F80.1 Expressive language disorder&quot;,&quot;F81.9 Developmental disorder of scholastic skills, unspecified&quot;,&quot;F84.5 Asperger&#39;s syndrome&quot;,&quot;F98.8 Other specified behavioural and emotional disorders with onset usually occurring in childhood and adolescence&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;F00 Dementia in Alzheimer&#39;s disease&quot;,&quot;F01 Vascular dementia&quot;,&quot;F02 Dementia in other diseases classified elsewhere&quot;,&quot;F05 Delirium, not induced by alcohol and other psychoactive substances&quot;,&quot;F06 Other mental disorders due to brain damage and dysfunction and to physical disease&quot;,&quot;F07 Personality and behavioural disorders due to brain disease, damage and dysfunction&quot;,&quot;F10 Mental and behavioural disorders due to use of alcohol&quot;,&quot;F12 Mental and behavioural disorders due to use of cannabinoids&quot;,&quot;F17 Mental and behavioural disorders due to use of tobacco&quot;,&quot;F20 Schizophrenia&quot;,&quot;F22 Persistent delusional disorders&quot;,&quot;F23 Acute and transient psychotic disorders&quot;,&quot;F25 Schizoaffective disorders&quot;,&quot;F31 Bipolar affective disorder&quot;,&quot;F32 Depressive episode&quot;,&quot;F33 Recurrent depressive disorder&quot;,&quot;F40 Phobic anxiety disorders&quot;,&quot;F41 Other anxiety disorders&quot;,&quot;F43 Reaction to severe stress, and adjustment disorders&quot;,&quot;F44 Dissociative [conversion] disorders&quot;,&quot;F45 Somatoform disorders&quot;,&quot;F51 Nonorganic sleep disorders&quot;,&quot;F52 Sexual dysfunction, not caused by organic disorder or disease&quot;,&quot;F60 Specific personality disorders&quot;,&quot;F80 Specific developmental disorders of speech and language&quot;,&quot;F81 Specific developmental disorders of scholastic skills&quot;,&quot;F84 Pervasive developmental disorders&quot;,&quot;F98 Other behavioural and emotional disorders with onset usually occurring in childhood and adolescence&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;F00-F09 Organic, including symptomatic, mental disorders&quot;,&quot;F10-F19 Mental and behavioural disorders due to psychoactive substance use&quot;,&quot;F20-F29 Schizophrenia, schizotypal and delusional disorders&quot;,&quot;F30-F39 Mood [affective] disorders&quot;,&quot;F40-F48 Neurotic, stress-related and somatoform disorders&quot;,&quot;F50-F59 Behavioural syndromes associated with physiological disturbances and physical factors&quot;,&quot;F60-F69 Disorders of adult personality and behaviour&quot;,&quot;F80-F89 Disorders of psychological development&quot;,&quot;F90-F98 Behavioural and emotional disorders with onset usually occurring in childhood and adolescence&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"disabled\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"number\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"display: none; position: absolute; width: 200px;\">\n      <div data-min=\"0.02\" data-max=\"2.96\" data-scale=\"15\"><\/div>\n      <span style=\"float: left;\"><\/span>\n      <span style=\"float: right;\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["F171","F329","F419","F101","F102","F100","F412","F103","F319","F209","F172","F323","F059","F067","F322","F339","F410","F458","F522","F432","F819","F009","F239","F321","F333","F402","F411","F431","F121","F200","F220","F230","F310","F313","F328","F845","F019","F028","F058","F072","F104","F105","F109","F122","F205","F229","F232","F259","F311","F312","F314","F316","F320","F332","F334","F430","F443","F444","F450","F453","F510","F603","F606","F609","F801","F988"],[148,146,56,45,25,19,18,13,13,11,10,7,6,6,6,6,5,5,5,4,4,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],["F17.1 Harmful use","F32.9 Depressive episode, unspecified","F41.9 Anxiety disorder, unspecified","F10.1 Harmful use","F10.2 Dependence syndrome","F10.0 Acute intoxication","F41.2 Mixed anxiety and depressive disorder","F10.3 Withdrawal state","F31.9 Bipolar affective disorder, unspecified","F20.9 Schizophrenia, unspecified","F17.2 Dependence syndrome","F32.3 Severe depressive episode with psychotic symptoms","F05.9 Delirium, unspecified","F06.7 Mild cognitive disorder","F32.2 Severe depressive episode without psychotic symptoms","F33.9 Recurrent depressive disorder, unspecified","F41.0 Panic disorder [episodic paroxysmal anxiety]","F45.8 Other somatoform disorders","F52.2 Failure of genital response","F43.2 Adjustment disorders","F81.9 Developmental disorder of scholastic skills, unspecified","F00.9 Dementia in Alzheimer's disease, unspecified","F23.9 Acute and transient psychotic disorder, unspecified","F32.1 Moderate depressive episode","F33.3 Recurrent depressive disorder, current episode severe with psychotic symptoms","F40.2 Specific (isolated) phobias","F41.1 Generalised anxiety disorder","F43.1 Posttraumatic stress disorder","F12.1 Harmful use","F20.0 Paranoid schizophrenia","F22.0 Delusional disorder","F23.0 Acute polymorphic psychotic disorder without symptoms of schizophrenia","F31.0 Bipolar affective disorder, current episode hypomanic","F31.3 Bipolar affective disorder, current episode mild or moderate depression","F32.8 Other depressive episodes","F84.5 Asperger's syndrome","F01.9 Vascular dementia, unspecified","F02.8 Dementia in other specified diseases classified elsewhere","F05.8 Other delirium","F07.2 Postconcussional syndrome","F10.4 Withdrawal state with delirium","F10.5 Psychotic disorder","F10.9 Unspecified mental and behavioural disorder","F12.2 Dependence syndrome","F20.5 Residual schizophrenia","F22.9 Persistent delusional disorder, unspecified","F23.2 Acute schizophrenia-like psychotic disorder","F25.9 Schizoaffective disorder, unspecified","F31.1 Bipolar affective disorder, current episode manic without psychotic symptoms","F31.2 Bipolar affective disorder, current episode manic with psychotic symptoms","F31.4 Bipolar affective disorder, current episode severe depression without psychotic symptoms","F31.6 Bipolar affective disorder, current episode mixed","F32.0 Mild depressive episode","F33.2 Recurrent depressive disorder, current episode severe without psychotic symptoms","F33.4 Recurrent depressive disorder, currently in remission","F43.0 Acute stress reaction","F44.3 Trance and possession disorders","F44.4 Dissociative motor disorders","F45.0 Somatisation disorder","F45.3 Somatoform autonomic dysfunction","F51.0 Nonorganic insomnia","F60.3 Emotionally unstable personality disorder","F60.6 Anxious [avoidant] personality disorder","F60.9 Personality disorder, unspecified","F80.1 Expressive language disorder","F98.8 Other specified behavioural and emotional disorders with onset usually occurring in childhood and adolescence"],["F17 Mental and behavioural disorders due to use of tobacco","F32 Depressive episode","F41 Other anxiety disorders","F10 Mental and behavioural disorders due to use of alcohol","F10 Mental and behavioural disorders due to use of alcohol","F10 Mental and behavioural disorders due to use of alcohol","F41 Other anxiety disorders","F10 Mental and behavioural disorders due to use of alcohol","F31 Bipolar affective disorder","F20 Schizophrenia","F17 Mental and behavioural disorders due to use of tobacco","F32 Depressive episode","F05 Delirium, not induced by alcohol and other psychoactive substances","F06 Other mental disorders due to brain damage and dysfunction and to physical disease","F32 Depressive episode","F33 Recurrent depressive disorder","F41 Other anxiety disorders","F45 Somatoform disorders","F52 Sexual dysfunction, not caused by organic disorder or disease","F43 Reaction to severe stress, and adjustment disorders","F81 Specific developmental disorders of scholastic skills","F00 Dementia in Alzheimer's disease","F23 Acute and transient psychotic disorders","F32 Depressive episode","F33 Recurrent depressive disorder","F40 Phobic anxiety disorders","F41 Other anxiety disorders","F43 Reaction to severe stress, and adjustment disorders","F12 Mental and behavioural disorders due to use of cannabinoids","F20 Schizophrenia","F22 Persistent delusional disorders","F23 Acute and transient psychotic disorders","F31 Bipolar affective disorder","F31 Bipolar affective disorder","F32 Depressive episode","F84 Pervasive developmental disorders","F01 Vascular dementia","F02 Dementia in other diseases classified elsewhere","F05 Delirium, not induced by alcohol and other psychoactive substances","F07 Personality and behavioural disorders due to brain disease, damage and dysfunction","F10 Mental and behavioural disorders due to use of alcohol","F10 Mental and behavioural disorders due to use of alcohol","F10 Mental and behavioural disorders due to use of alcohol","F12 Mental and behavioural disorders due to use of cannabinoids","F20 Schizophrenia","F22 Persistent delusional disorders","F23 Acute and transient psychotic disorders","F25 Schizoaffective disorders","F31 Bipolar affective disorder","F31 Bipolar affective disorder","F31 Bipolar affective disorder","F31 Bipolar affective disorder","F32 Depressive episode","F33 Recurrent depressive disorder","F33 Recurrent depressive disorder","F43 Reaction to severe stress, and adjustment disorders","F44 Dissociative [conversion] disorders","F44 Dissociative [conversion] disorders","F45 Somatoform disorders","F45 Somatoform disorders","F51 Nonorganic sleep disorders","F60 Specific personality disorders","F60 Specific personality disorders","F60 Specific personality disorders","F80 Specific developmental disorders of speech and language","F98 Other behavioural and emotional disorders with onset usually occurring in childhood and adolescence"],["F10-F19 Mental and behavioural disorders due to psychoactive substance use","F30-F39 Mood [affective] disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F10-F19 Mental and behavioural disorders due to psychoactive substance use","F10-F19 Mental and behavioural disorders due to psychoactive substance use","F10-F19 Mental and behavioural disorders due to psychoactive substance use","F40-F48 Neurotic, stress-related and somatoform disorders","F10-F19 Mental and behavioural disorders due to psychoactive substance use","F30-F39 Mood [affective] disorders","F20-F29 Schizophrenia, schizotypal and delusional disorders","F10-F19 Mental and behavioural disorders due to psychoactive substance use","F30-F39 Mood [affective] disorders","F00-F09 Organic, including symptomatic, mental disorders","F00-F09 Organic, including symptomatic, mental disorders","F30-F39 Mood [affective] disorders","F30-F39 Mood [affective] disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F50-F59 Behavioural syndromes associated with physiological disturbances and physical factors","F40-F48 Neurotic, stress-related and somatoform disorders","F80-F89 Disorders of psychological development","F00-F09 Organic, including symptomatic, mental disorders","F20-F29 Schizophrenia, schizotypal and delusional disorders","F30-F39 Mood [affective] disorders","F30-F39 Mood [affective] disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F10-F19 Mental and behavioural disorders due to psychoactive substance use","F20-F29 Schizophrenia, schizotypal and delusional disorders","F20-F29 Schizophrenia, schizotypal and delusional disorders","F20-F29 Schizophrenia, schizotypal and delusional disorders","F30-F39 Mood [affective] disorders","F30-F39 Mood [affective] disorders","F30-F39 Mood [affective] disorders","F80-F89 Disorders of psychological development","F00-F09 Organic, including symptomatic, mental disorders","F00-F09 Organic, including symptomatic, mental disorders","F00-F09 Organic, including symptomatic, mental disorders","F00-F09 Organic, including symptomatic, mental disorders","F10-F19 Mental and behavioural disorders due to psychoactive substance use","F10-F19 Mental and behavioural disorders due to psychoactive substance use","F10-F19 Mental and behavioural disorders due to psychoactive substance use","F10-F19 Mental and behavioural disorders due to psychoactive substance use","F20-F29 Schizophrenia, schizotypal and delusional disorders","F20-F29 Schizophrenia, schizotypal and delusional disorders","F20-F29 Schizophrenia, schizotypal and delusional disorders","F20-F29 Schizophrenia, schizotypal and delusional disorders","F30-F39 Mood [affective] disorders","F30-F39 Mood [affective] disorders","F30-F39 Mood [affective] disorders","F30-F39 Mood [affective] disorders","F30-F39 Mood [affective] disorders","F30-F39 Mood [affective] disorders","F30-F39 Mood [affective] disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F40-F48 Neurotic, stress-related and somatoform disorders","F50-F59 Behavioural syndromes associated with physiological disturbances and physical factors","F60-F69 Disorders of adult personality and behaviour","F60-F69 Disorders of adult personality and behaviour","F60-F69 Disorders of adult personality and behaviour","F80-F89 Disorders of psychological development","F90-F98 Behavioural and emotional disorders with onset usually occurring in childhood and adolescence"],["Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental","Mental"],[2.96,2.92,1.12,0.9,0.5,0.38,0.36,0.26,0.26,0.22,0.2,0.14,0.12,0.12,0.12,0.12,0.1,0.1,0.1,0.08,0.08,0.06,0.06,0.06,0.06,0.06,0.06,0.06,0.04,0.04,0.04,0.04,0.04,0.04,0.04,0.04,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>disease<\/th>\n      <th>n<\/th>\n      <th>meaning_L4<\/th>\n      <th>meaning_L3<\/th>\n      <th>meaning_L2<\/th>\n      <th>short<\/th>\n      <th>inPerc<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[1,6]}],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true},"selection":{"mode":"multiple","selected":null,"target":"row"}},"evals":[],"jsHooks":[]}</script>
+</div>
+<div id="barplot" class="section level3">
+<h3><span class="header-section-number">5.2.3</span> Barplot</h3>
+<p>Seen in a graphic:</p>
+<pre class="r"><code>mental %&gt;%
+  arrange(n) %&gt;%
+  tail(20) %&gt;%
+  ungroup() %&gt;%
+  mutate(meaning_L4 = factor(meaning_L4, meaning_L4)) %&gt;%
+  ggplot(aes(x=meaning_L4, y=n)) +
+    geom_bar(stat=&quot;identity&quot;, color=&#39;white&#39;, fill=&#39;skyblue&#39;) +
+    labs(
+      x=&quot;Disease category&quot;,
+      y=&quot;Number of case&quot;,
+      title=&quot;Most common diseases observed in the UKB study&quot;,
+      subtitle=&quot;primary AND secondary diagnoses&quot;
+    ) +
+    theme(legend.position=&quot;none&quot;) +
+    coord_flip()</code></pre>
+<p><img src="2_Exploratory_Analysis_files/figure-html/unnamed-chunk-34-1.png" width="672" /></p>
+<p>Note: Here I give proportion per sub-subgroup of disease. Note that I cannot easily aggregate at the subgroup level because I can cannot sum this proportion. Why? Because one person can have several disease.</p>
+</div>
+</div>
+</div>
+
+&nbsp;
+<hr />
+<p style="text-align: center;">A work by <a href="https://github.com/holtzy/">Yan Holtz</a></p>
+<p style="text-align: center;"><span style="color: #808080;"><em>Yan.holtz.data@gmail.com</em></span></p>
+
+<!-- Add icon library -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<!-- Add font awesome icons -->
+<p style="text-align: center;">
+	<a href="https://twitter.com/r_graph_gallery?lang=en" class="fa fa-twitter"></a>
+	<a href="https://www.linkedin.com/in/yan-holtz-2477534a/" class="fa fa-linkedin"></a>
+	<a href="https://github.com/holtzy/" class="fa fa-github"></a>
+</p>
+
+&nbsp;
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

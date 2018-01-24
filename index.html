@@ -12,7 +12,7 @@
 <meta name="author" content="by Yan Holtz - 24 January 2018" />
 
 
-<title>A clean and uncluttered template</title>
+<title>A few thoughts about comorbidity in the UK Biobank</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -194,10 +194,13 @@ $(document).ready(function () {
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="index.html">start</a>
+  <a href="index.html">Intro</a>
 </li>
 <li>
-  <a href="1_DataWrangling.html">End</a>
+  <a href="1_DataWrangling.html">Get data</a>
+</li>
+<li>
+  <a href="2_Exploratory_Analysis.html">explore UKB</a>
 </li>
       </ul>
     </div><!--/.nav-collapse -->
@@ -217,24 +220,18 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">A clean and uncluttered template</h1>
+<h1 class="title toc-ignore">A few thoughts about comorbidity in the UK Biobank</h1>
 <h4 class="author"><em>by <a href="https://github.com/holtzy/">Yan Holtz</a> - 24 January 2018</em></h4>
 
 </div>
 
 
 <br><br>
-<blockquote>
-<p>This project talk about that and that</p>
-</blockquote>
-<div id="what-i-am-gonna-do" class="section level1">
-<h1><span class="header-section-number">1</span> What I am gonna do</h1>
-<hr />
-<p>Usually I always start by loading libraries. The tidyverse is probably the package I use the most. Quite difficult to imagine analysing data without it. It is a good practice to load all the packages in the same time. It allows to know exactly what is needed to reproduce your analysis.</p>
-<pre class="r"><code>library(tidyverse)
-library(rmarkdown)    # You need this library to run this template.
-library(epuRate)      # Install with devtools: install_github(&quot;holtzy/epuRate&quot;, force=TRUE)</code></pre>
-</div>
+<p>This document summarizes my work concerning comorbidity in the UKB. It is composed by several parts:</p>
+<ul>
+<li><strong>Data Wrangling</strong>: Get the data from the UKB, calculate disease occurence + pairs of disease occurence + comorbidity index, download heritabilities from Neale’s Lab, load ICD10 classification.</li>
+<li><strong>UKB general description</strong>: a general explorative analysis on the UKB, just to make sure I know what I am talking about</li>
+</ul>
 
 &nbsp;
 <hr />
