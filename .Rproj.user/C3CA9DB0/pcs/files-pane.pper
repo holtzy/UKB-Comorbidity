@@ -1,0 +1,9 @@
+{
+    "path" : "~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/UKB-Comorbidity",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}
