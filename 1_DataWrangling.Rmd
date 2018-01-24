@@ -1,0 +1,297 @@
+---
+title: "Data Wrangling"
+author: "by [Yan Holtz](https://github.com/holtzy/) - `r format(Sys.time(), '%d %B %Y')`"
+---
+
+  
+```{r echo=FALSE}
+# Just to add space between the introduction of the document
+knitr::asis_output(htmltools::htmlPreserve("<br><br>"))
+```
+
+
+This file is the first part of the UK Biobank comorbidity analysis. It does:  
+
+* Take a few columns in the whole phenotypic file of the UKB  
+* Takes the ICD10 classification of disease and transform it in a workable format  
+* Explain how HES data were harvested and treated  
+* I calculate the Comorbidty matrix: gives the occurence of each disease and each pair of disease  
+
+
+```{r, message=FALSE, warning=FALSE}
+# We will need a few library to run this document
+library(tidyverse)
+library(rmarkdown)    # You need this library to run this template.
+library(epuRate)      # Install with devtools: install_github("holtzy/epuRate", force=TRUE)
+library(xtable)
+library(knitr)
+```
+
+
+
+
+
+
+
+
+#Harvest the UKB data
+***
+The first step takes place in the QBI cluster. I must harvest the fields I need in the whole UKB phenotype data set. To do so I read the file 9280_1250_UKBiobank.html. I select the field that interest me. Then I harvest this field using this Bash code. Note that I have to add 1 to the 'Column' column that I select.
+
+
+First harvest in August 2017:
+```{r eval=FALSE}
+# Version 1: August 2017
+zcat /references/UKBiobank/pheno/download/9280_12505_UKBiobank.tab.gz | cut -f1,8,9,22-24,144-146,147-149,4069-4071,4081,4082,4066-4068,3438,3439-3441,5899-5901,5902-5943,6181,6185-6564,6593-7027,7058-
+7062,26-28,29-31,4075-4077,4081,5896-5898,6008-6010,6179,6180,262-264,361-363 > /ibscratch/wrayvisscher/Yan/UKB_phenos.txt
+```
+
+Second harvest in October: I add the ICD10 secondary diagnosis
+```{r eval=FALSE}
+# Version 2: October 2017
+
+# Make script
+cd /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS
+nano extract.sh
+zcat /references/UKBiobank/pheno/download/9280_12505_UKBiobank.tab.gz | cut -f1,8,9,22-24,144-146,147-149,4069-4071,4081,4082,4066-4068,3438,3439-3441,5899-5901,5902-5943,6181,6185-6564,6593-7027,7058-7062,26-28,29-31,4075-4077,4081,5896-5898,6008-6010,6179,6180,262-264,361-363,6593-7027 > /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt
+# Send with Qsub
+qsub -b y -cwd -e tmp -o tmp "/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/extract.sh"
+# Zip the result
+gzip /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt
+```
+
+Files are transfered locally by scp:
+```{r eval=FALSE}
+# Transfert locally
+cd /Users/y.holtz/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES
+scp  uqyholtz@cluster.qbi.uq.edu.au://ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt.gz .
+# Note: file = 39G
+```
+
+
+
+
+
+
+
+#ICD 10 Classification 
+***
+The human diseases are classified by the [WHO](https://en.wikipedia.org/wiki/World_Health_Organization) (World Health Organization) disease classification ( International Statistical Classification of Diseases: [ICD](http://apps.who.int/classifications/icd10/browse/2010/en)). About 16k diseases are reported and coded.  
+
+This classification has been downloaded, cleaned and describe in [this document](https://holtzy.github.io/Visualizing-the-ICD10-Classification/).
+
+
+
+
+
+
+#Hospital Episode Data (HES)
+***
+Suppose somebody has 3 ICD10 diseases. We are highly interested to know WHEN each disease was discovered. The phenotype file provides us with the number of time somebody has been to the hospital. But an external file is needed to know when it was.  
+The HES (Hospital Episode Statistics) data provides this information.  
+
+Load it:
+```{r}
+#HES=read_tsv("/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/RECORD_REPOSITORY/ukb_hesin.tsv")
+```
+
+Note that we need a bridge file to make the links with the phenotype because this info comes from the application of John, not the one from Naomi and Peter like for the phenotype.
+```{r}
+#bridge=read_delim("/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/ukb_bridgingfile_12505_10214.txt", delim=" ")
+```
+
+
+
+
+
+
+
+
+
+
+
+#Comorbidity Matrix
+***
+
+
+##Aggregate diseases
+We want to study comorbidity at different levels: group, subgroup and subsubgroup. The idea is thus to read the UKB phenotypes and replace each disease ID (currently subsubgroup) per its subgroup and group id.
+This is done through a custom Python script. I make this job 4 times: subsubgroups, subgroup, group, and mental vs other.
+
+The first step is to prepare to "equivalence" files: what do I replace by what?
+```{r, eval=FALSE}
+load("/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/WHO_disease_classification_clean.R")
+library(dplyr)
+
+# L3 (subgroup). In the UKB I can find codes at levels 4 (mainly) OR at level 5 (sometimes). Thus I must take both into account
+# When I have code at level3 I can just keep them!
+a=ICD[ , c("coding_L4", "coding_L3" )]
+b=ICD[ , c("coding_L5", "coding_L3" )] 
+colnames(b)=colnames(a)=c("from", "to")
+tmp=na.omit(rbind(a,b))
+write.table(tmp, "/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L3.txt", quote=F, row.names=F, sep="\t")
+
+# L2 (group)
+a=ICD[ , c("coding_L3", "coding_L2" )]
+b=ICD[ , c("coding_L4", "coding_L2" )]
+c=ICD[ , c("coding_L5", "coding_L2" )] 
+colnames(c)=colnames(b)=colnames(a)=c("from", "to")
+tmp=na.omit(rbind(a,b,c))
+write.table(tmp, "/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L2.txt", quote=F, row.names=F, sep="\t")
+
+# L1 (mental, others..)
+a=ICD[ , c("coding_L3", "short" )]
+b=ICD[ , c("coding_L4", "short" )]
+c=ICD[ , c("coding_L5", "short" )] 
+colnames(c)=colnames(b)=colnames(a)=c("from", "to")
+tmp=na.omit(rbind(a,b,c)) %>% unique()
+write.table(tmp, "/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L1.txt", quote=F, row.names=F, sep="\t")
+```
+
+Now we can make the transformation with the python script
+```{r eval=FALSE}
+cd /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX
+
+# level 3
+qsub -b y -cwd -N tmp_L3 "/clusterdata/apps/python2.7.1/Python-2.7.1/python  /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_replace_values.py -input /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt.gz -replace /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L3.txt -output /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L3.txt"
+
+# level 2
+qsub -b y -cwd -N tmp_L2 "/clusterdata/apps/python2.7.1/Python-2.7.1/python  /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_replace_values.py -input /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt.gz -replace /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L2.txt -output /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L2.txt"
+
+# level 1
+qsub -b y -cwd -N tmp_L1 "/clusterdata/apps/python2.7.1/Python-2.7.1/python  /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_replace_values.py -input /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt.gz -replace /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L1.txt -output /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L1.txt"
+
+# An compress
+gzip UKB_phenos*
+```
+
+
+
+
+
+
+
+##Calculate occurence of pairs
+Some individuals have several mental diseases. Let's check which disease tend to occur together? 
+For each pair of mental disease, I'm going to count the number of time the pair appear.  
+I build a square matrix. Each cell gives the number of time 2 diseases have been seen together. Not that easy to compute actually!  
+This is a script that I sent on qsub on the cluster:  
+
+```{r, eval=FALSE}
+
+#!/usr/bin/env Rscript
+# This is an Rscript that takes the UKB phenotype matrix as input
+args = commandArgs(trailingOnly=TRUE)
+input_file=args[1]
+output_file=args[2]
+
+# libraries
+library(dplyr, lib.loc="/clusterdata/uqyholtz/R/x86_64-unknown-linux-gnu-library/3.1/")
+
+# Read the data already takes minutes.
+# Don't forget to change the number of lines
+data=read.table(input_file, header=T, sep="\t")
+print("File has been read. Number of row:")
+print(nrow(data))
+
+# List of every disease found (not only mental)
+all=data %>% select(f.41202.0.0:f.41202.0.379  ,  f.41204.0.0:f.41204.0.434)  %>% as.matrix %>% as.vector() %>% unique() 
+all=all[!is.na(all)]
+print("number of diseases found:")
+print(length(all))
+
+# What's the time
+start=Sys.time()
+
+# Initialize a 0 matrix with all the pair
+selection=data %>% select(f.41202.0.0:f.41202.0.379  ,  f.41204.0.0:f.41204.0.434)
+output=matrix(0,length(all), length(all))
+colnames(output)=all
+rownames(output)=all
+
+# What's the time
+start=Sys.time()
+
+# Apply this function to each line of the matrix
+for(i in seq(1, nrow(data))){
+  print(i)
+  a=data[i,] %>% as.matrix %>% as.vector() %>% unique() 
+  b=match(a, colnames(output))
+  b=b[!is.na(b)]
+  if(length(b)!=0){
+    output[b,b]=output[b,b]+1
+  }
+}
+
+# Write the result
+write.table(output, file=output_file, sep=";", quote=F, col.names = T, row.names = F )
+
+# What's the time. How long did it take?
+end=Sys.time()
+end-start
+```
+
+Send this script in qsub on the QBI cluster:
+```{r eval=FALSE}
+cd /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX
+
+# L3
+qsub -b y -cwd -e tmp_calc_como_adjacency_UKB_L3_log -o tmp_calc_como_adjacency_UKB_L3_log -l vf=30G,h_vmem=30G "/clusterdata/apps/R-3.2.3/bin/Rscript /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_COMO_adjacency.R /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L3.txt.gz /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/Como_Ocurrence_L3.txt"
+
+# L2
+qsub -b y -cwd -e tmp_calc_como_adjacency_UKB_L2_log -o tmp_calc_como_adjacency_UKB_L2_log -l vf=30G,h_vmem=30G "/clusterdata/apps/R-3.2.3/bin/Rscript /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_COMO_adjacency.R /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L2.txt.gz /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/Como_Ocurrence_L2.txt"
+
+# L1
+qsub -b y -cwd -e tmp_calc_como_adjacency_UKB_L1_log -o tmp_calc_como_adjacency_UKB_L1_log -l vf=30G,h_vmem=30G "/clusterdata/apps/R-3.2.3/bin/Rscript /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_COMO_adjacency.R /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L1.txt.gz /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/Como_Ocurrence_L1.txt"
+
+#gzip the results
+gzip Como*
+```
+
+Once the job is over, I take the result back locally for further analysis.
+```{r eval=FALSE}
+cd /Users/y.holtz/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES
+scp uqyholtz@cluster.qbi.uq.edu.au:/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/Como_Ocurrence* .
+```
+
+Then, this matrix can be read as follow:
+Read the matrix in R
+```{r}
+data=read.table("0_DATA/Como_Ocurrence_L1.txt.gz", sep=";", header=T)
+data=as.matrix(data)
+rownames(data)=colnames(data)
+as.data.frame( data[1:5, 1:5] )
+```
+
+Three version of this count table are thus provided and available on github: at level1, level2 and level3. 
+
+
+
+
+
+
+
+#Heritability
+***
+Recovered from the Neale Lab:
+This file has 770 column and 2420 diseases. So many information for each disease.
+We have 14 mental diseases here. And 642 diseases in total.
+```{r}
+Herit=read.table("0_DATA/ukbb_all_h2part_results.txt", sep="\t", header = T)
+Herit=Herit[ substr(Herit$phenotype, 1, 1) %in% LETTERS , c(1:20) ]
+Herit=Herit %>% arrange(phenotype)
+dim(Herit)
+colnames(Herit)
+Herit %>% head()
+```
+
+
+
+
+
+
+
+
+
+
+

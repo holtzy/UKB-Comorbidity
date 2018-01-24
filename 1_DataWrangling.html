@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="by Yan Holtz - 24 January 2018" />
+
+
+<title>Data Wrangling</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/lumen.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="site_libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 54px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+
+.section h2 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+.section h3 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+.section h4 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+.section h5 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+.section h6 {
+  padding-top: 59px;
+  margin-top: -59px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Comorbidity in the UK Biobank</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="index.html">start</a>
+</li>
+<li>
+  <a href="1_DataWrangling.html">End</a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+<a href="https://github.com/holtzy/" class="github-corner" aria-label="View source on Github"><svg width="80" height="80" viewBox="0 0 250 250" style="fill:#2ecc71; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style>
+
+<div class="fluid-row" id="header">
+
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Data Wrangling</h1>
+<h4 class="author"><em>by <a href="https://github.com/holtzy/">Yan Holtz</a> - 24 January 2018</em></h4>
+
+</div>
+
+
+<br><br>
+<p>This file is the first part of the UK Biobank comorbidity analysis. It does:</p>
+<ul>
+<li>Take a few columns in the whole phenotypic file of the UKB<br />
+</li>
+<li>Takes the ICD10 classification of disease and transform it in a workable format<br />
+</li>
+<li>Explain how HES data were harvested and treated<br />
+</li>
+<li>I calculate the Comorbidty matrix: gives the occurence of each disease and each pair of disease</li>
+</ul>
+<pre class="r"><code># We will need a few library to run this document
+library(tidyverse)
+library(rmarkdown)    # You need this library to run this template.
+library(epuRate)      # Install with devtools: install_github(&quot;holtzy/epuRate&quot;, force=TRUE)
+library(xtable)
+library(knitr)</code></pre>
+<div id="harvest-the-ukb-data" class="section level1">
+<h1><span class="header-section-number">1</span> Harvest the UKB data</h1>
+<hr />
+<p>The first step takes place in the QBI cluster. I must harvest the fields I need in the whole UKB phenotype data set. To do so I read the file 9280_1250_UKBiobank.html. I select the field that interest me. Then I harvest this field using this Bash code. Note that I have to add 1 to the ‘Column’ column that I select.</p>
+<p>First harvest in August 2017:</p>
+<pre class="r"><code># Version 1: August 2017
+zcat /references/UKBiobank/pheno/download/9280_12505_UKBiobank.tab.gz | cut -f1,8,9,22-24,144-146,147-149,4069-4071,4081,4082,4066-4068,3438,3439-3441,5899-5901,5902-5943,6181,6185-6564,6593-7027,7058-
+7062,26-28,29-31,4075-4077,4081,5896-5898,6008-6010,6179,6180,262-264,361-363 &gt; /ibscratch/wrayvisscher/Yan/UKB_phenos.txt</code></pre>
+<p>Second harvest in October: I add the ICD10 secondary diagnosis</p>
+<pre class="r"><code># Version 2: October 2017
+
+# Make script
+cd /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS
+nano extract.sh
+zcat /references/UKBiobank/pheno/download/9280_12505_UKBiobank.tab.gz | cut -f1,8,9,22-24,144-146,147-149,4069-4071,4081,4082,4066-4068,3438,3439-3441,5899-5901,5902-5943,6181,6185-6564,6593-7027,7058-7062,26-28,29-31,4075-4077,4081,5896-5898,6008-6010,6179,6180,262-264,361-363,6593-7027 &gt; /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt
+# Send with Qsub
+qsub -b y -cwd -e tmp -o tmp &quot;/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/extract.sh&quot;
+# Zip the result
+gzip /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt</code></pre>
+<p>Files are transfered locally by scp:</p>
+<pre class="r"><code># Transfert locally
+cd /Users/y.holtz/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES
+scp  uqyholtz@cluster.qbi.uq.edu.au://ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt.gz .
+# Note: file = 39G</code></pre>
+</div>
+<div id="icd-10-classification" class="section level1">
+<h1><span class="header-section-number">2</span> ICD 10 Classification</h1>
+<hr />
+<p>The human diseases are classified by the <a href="https://en.wikipedia.org/wiki/World_Health_Organization">WHO</a> (World Health Organization) disease classification ( International Statistical Classification of Diseases: <a href="http://apps.who.int/classifications/icd10/browse/2010/en">ICD</a>). About 16k diseases are reported and coded.</p>
+<p>This classification has been downloaded, cleaned and describe in <a href="https://holtzy.github.io/Visualizing-the-ICD10-Classification/">this document</a>.</p>
+</div>
+<div id="hospital-episode-data-hes" class="section level1">
+<h1><span class="header-section-number">3</span> Hospital Episode Data (HES)</h1>
+<hr />
+<p>Suppose somebody has 3 ICD10 diseases. We are highly interested to know WHEN each disease was discovered. The phenotype file provides us with the number of time somebody has been to the hospital. But an external file is needed to know when it was.<br />
+The HES (Hospital Episode Statistics) data provides this information.</p>
+<p>Load it:</p>
+<pre class="r"><code>#HES=read_tsv(&quot;/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/RECORD_REPOSITORY/ukb_hesin.tsv&quot;)</code></pre>
+<p>Note that we need a bridge file to make the links with the phenotype because this info comes from the application of John, not the one from Naomi and Peter like for the phenotype.</p>
+<pre class="r"><code>#bridge=read_delim(&quot;/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/ukb_bridgingfile_12505_10214.txt&quot;, delim=&quot; &quot;)</code></pre>
+</div>
+<div id="comorbidity-matrix" class="section level1">
+<h1><span class="header-section-number">4</span> Comorbidity Matrix</h1>
+<hr />
+<div id="aggregate-diseases" class="section level2">
+<h2><span class="header-section-number">4.1</span> Aggregate diseases</h2>
+<p>We want to study comorbidity at different levels: group, subgroup and subsubgroup. The idea is thus to read the UKB phenotypes and replace each disease ID (currently subsubgroup) per its subgroup and group id. This is done through a custom Python script. I make this job 4 times: subsubgroups, subgroup, group, and mental vs other.</p>
+<p>The first step is to prepare to “equivalence” files: what do I replace by what?</p>
+<pre class="r"><code>load(&quot;/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/WHO_disease_classification_clean.R&quot;)
+library(dplyr)
+
+# L3 (subgroup). In the UKB I can find codes at levels 4 (mainly) OR at level 5 (sometimes). Thus I must take both into account
+# When I have code at level3 I can just keep them!
+a=ICD[ , c(&quot;coding_L4&quot;, &quot;coding_L3&quot; )]
+b=ICD[ , c(&quot;coding_L5&quot;, &quot;coding_L3&quot; )] 
+colnames(b)=colnames(a)=c(&quot;from&quot;, &quot;to&quot;)
+tmp=na.omit(rbind(a,b))
+write.table(tmp, &quot;/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L3.txt&quot;, quote=F, row.names=F, sep=&quot;\t&quot;)
+
+# L2 (group)
+a=ICD[ , c(&quot;coding_L3&quot;, &quot;coding_L2&quot; )]
+b=ICD[ , c(&quot;coding_L4&quot;, &quot;coding_L2&quot; )]
+c=ICD[ , c(&quot;coding_L5&quot;, &quot;coding_L2&quot; )] 
+colnames(c)=colnames(b)=colnames(a)=c(&quot;from&quot;, &quot;to&quot;)
+tmp=na.omit(rbind(a,b,c))
+write.table(tmp, &quot;/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L2.txt&quot;, quote=F, row.names=F, sep=&quot;\t&quot;)
+
+# L1 (mental, others..)
+a=ICD[ , c(&quot;coding_L3&quot;, &quot;short&quot; )]
+b=ICD[ , c(&quot;coding_L4&quot;, &quot;short&quot; )]
+c=ICD[ , c(&quot;coding_L5&quot;, &quot;short&quot; )] 
+colnames(c)=colnames(b)=colnames(a)=c(&quot;from&quot;, &quot;to&quot;)
+tmp=na.omit(rbind(a,b,c)) %&gt;% unique()
+write.table(tmp, &quot;/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L1.txt&quot;, quote=F, row.names=F, sep=&quot;\t&quot;)</code></pre>
+<p>Now we can make the transformation with the python script</p>
+<pre class="r"><code>cd /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX
+
+# level 3
+qsub -b y -cwd -N tmp_L3 &quot;/clusterdata/apps/python2.7.1/Python-2.7.1/python  /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_replace_values.py -input /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt.gz -replace /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L3.txt -output /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L3.txt&quot;
+
+# level 2
+qsub -b y -cwd -N tmp_L2 &quot;/clusterdata/apps/python2.7.1/Python-2.7.1/python  /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_replace_values.py -input /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt.gz -replace /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L2.txt -output /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L2.txt&quot;
+
+# level 1
+qsub -b y -cwd -N tmp_L1 &quot;/clusterdata/apps/python2.7.1/Python-2.7.1/python  /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_replace_values.py -input /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/DATA/UKB_phenos.txt.gz -replace /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/equivalence_L1.txt -output /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L1.txt&quot;
+
+# An compress
+gzip UKB_phenos*</code></pre>
+</div>
+<div id="calculate-occurence-of-pairs" class="section level2">
+<h2><span class="header-section-number">4.2</span> Calculate occurence of pairs</h2>
+<p>Some individuals have several mental diseases. Let’s check which disease tend to occur together? For each pair of mental disease, I’m going to count the number of time the pair appear.<br />
+I build a square matrix. Each cell gives the number of time 2 diseases have been seen together. Not that easy to compute actually!<br />
+This is a script that I sent on qsub on the cluster:</p>
+<pre class="r"><code>#!/usr/bin/env Rscript
+# This is an Rscript that takes the UKB phenotype matrix as input
+args = commandArgs(trailingOnly=TRUE)
+input_file=args[1]
+output_file=args[2]
+
+# libraries
+library(dplyr, lib.loc=&quot;/clusterdata/uqyholtz/R/x86_64-unknown-linux-gnu-library/3.1/&quot;)
+
+# Read the data already takes minutes.
+# Don&#39;t forget to change the number of lines
+data=read.table(input_file, header=T, sep=&quot;\t&quot;)
+print(&quot;File has been read. Number of row:&quot;)
+print(nrow(data))
+
+# List of every disease found (not only mental)
+all=data %&gt;% select(f.41202.0.0:f.41202.0.379  ,  f.41204.0.0:f.41204.0.434)  %&gt;% as.matrix %&gt;% as.vector() %&gt;% unique() 
+all=all[!is.na(all)]
+print(&quot;number of diseases found:&quot;)
+print(length(all))
+
+# What&#39;s the time
+start=Sys.time()
+
+# Initialize a 0 matrix with all the pair
+selection=data %&gt;% select(f.41202.0.0:f.41202.0.379  ,  f.41204.0.0:f.41204.0.434)
+output=matrix(0,length(all), length(all))
+colnames(output)=all
+rownames(output)=all
+
+# What&#39;s the time
+start=Sys.time()
+
+# Apply this function to each line of the matrix
+for(i in seq(1, nrow(data))){
+  print(i)
+  a=data[i,] %&gt;% as.matrix %&gt;% as.vector() %&gt;% unique() 
+  b=match(a, colnames(output))
+  b=b[!is.na(b)]
+  if(length(b)!=0){
+    output[b,b]=output[b,b]+1
+  }
+}
+
+# Write the result
+write.table(output, file=output_file, sep=&quot;;&quot;, quote=F, col.names = T, row.names = F )
+
+# What&#39;s the time. How long did it take?
+end=Sys.time()
+end-start</code></pre>
+<p>Send this script in qsub on the QBI cluster:</p>
+<pre class="r"><code>cd /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX
+
+# L3
+qsub -b y -cwd -e tmp_calc_como_adjacency_UKB_L3_log -o tmp_calc_como_adjacency_UKB_L3_log -l vf=30G,h_vmem=30G &quot;/clusterdata/apps/R-3.2.3/bin/Rscript /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_COMO_adjacency.R /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L3.txt.gz /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/Como_Ocurrence_L3.txt&quot;
+
+# L2
+qsub -b y -cwd -e tmp_calc_como_adjacency_UKB_L2_log -o tmp_calc_como_adjacency_UKB_L2_log -l vf=30G,h_vmem=30G &quot;/clusterdata/apps/R-3.2.3/bin/Rscript /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_COMO_adjacency.R /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L2.txt.gz /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/Como_Ocurrence_L2.txt&quot;
+
+# L1
+qsub -b y -cwd -e tmp_calc_como_adjacency_UKB_L1_log -o tmp_calc_como_adjacency_UKB_L1_log -l vf=30G,h_vmem=30G &quot;/clusterdata/apps/R-3.2.3/bin/Rscript /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/SCRIPTS/script_COMO_adjacency.R /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/UKB_phenos_L1.txt.gz /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/Como_Ocurrence_L1.txt&quot;
+
+#gzip the results
+gzip Como*</code></pre>
+<p>Once the job is over, I take the result back locally for further analysis.</p>
+<pre class="r"><code>cd /Users/y.holtz/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES
+scp uqyholtz@cluster.qbi.uq.edu.au:/ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/COMORBIDITY_INDEX/Como_Ocurrence* .</code></pre>
+<p>Then, this matrix can be read as follow: Read the matrix in R</p>
+<pre class="r"><code>data=read.table(&quot;0_DATA/Como_Ocurrence_L1.txt.gz&quot;, sep=&quot;;&quot;, header=T)
+data=as.matrix(data)
+rownames(data)=colnames(data)
+as.data.frame( data[1:5, 1:5] )</code></pre>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["musculoskeletal"],"name":[1],"type":["int"],"align":["right"]},{"label":["Factor.influencing"],"name":[2],"type":["int"],"align":["right"]},{"label":["Injury"],"name":[3],"type":["int"],"align":["right"]},{"label":["Blood.Immune"],"name":[4],"type":["int"],"align":["right"]},{"label":["Genitourinary"],"name":[5],"type":["int"],"align":["right"]}],"data":[{"1":"134376","2":"90374","3":"34808","4":"15252","5":"47446","_rn_":"musculoskeletal"},{"1":"90374","2":"212945","3":"50915","4":"24902","5":"78997","_rn_":"Factor.influencing"},{"1":"34808","2":"50915","3":"74848","4":"9985","5":"26826","_rn_":"Injury"},{"1":"15252","2":"24902","3":"9985","4":"31446","5":"14636","_rn_":"Blood.Immune"},{"1":"47446","2":"78997","3":"26826","4":"14636","5":"122548","_rn_":"Genitourinary"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+</div>
+</div>
+<div id="heritability" class="section level1">
+<h1><span class="header-section-number">5</span> Heritability</h1>
+<hr />
+<p>Recovered from the Neale Lab: This file has 770 column and 2420 diseases. So many information for each disease. We have 14 mental diseases here. And 642 diseases in total.</p>
+<pre class="r"><code>Herit=read.table(&quot;0_DATA/ukbb_all_h2part_results.txt&quot;, sep=&quot;\t&quot;, header = T)
+Herit=Herit[ substr(Herit$phenotype, 1, 1) %in% LETTERS , c(1:20) ]
+Herit=Herit %&gt;% arrange(phenotype)
+dim(Herit)</code></pre>
+<pre><code>## [1] 303  20</code></pre>
+<pre class="r"><code>colnames(Herit)</code></pre>
+<pre><code>##  [1] &quot;phenotype&quot;       &quot;description&quot;     &quot;N&quot;              
+##  [4] &quot;N_case&quot;          &quot;N_control&quot;       &quot;prevelence&quot;     
+##  [7] &quot;mean_chi2&quot;       &quot;lambdaGC&quot;        &quot;intercept&quot;      
+## [10] &quot;intercept_se&quot;    &quot;intercept_z&quot;     &quot;intercept_p&quot;    
+## [13] &quot;ratio&quot;           &quot;ratio_se&quot;        &quot;h2_observed&quot;    
+## [16] &quot;h2_observed_se&quot;  &quot;h2_liability&quot;    &quot;h2_liability_se&quot;
+## [19] &quot;h2_z&quot;            &quot;h2_p&quot;</code></pre>
+<pre class="r"><code>Herit %&gt;% head()</code></pre>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["phenotype"],"name":[1],"type":["fctr"],"align":["left"]},{"label":["description"],"name":[2],"type":["fctr"],"align":["left"]},{"label":["N"],"name":[3],"type":["int"],"align":["right"]},{"label":["N_case"],"name":[4],"type":["int"],"align":["right"]},{"label":["N_control"],"name":[5],"type":["int"],"align":["right"]},{"label":["prevelence"],"name":[6],"type":["dbl"],"align":["right"]},{"label":["mean_chi2"],"name":[7],"type":["dbl"],"align":["right"]},{"label":["lambdaGC"],"name":[8],"type":["dbl"],"align":["right"]},{"label":["intercept"],"name":[9],"type":["dbl"],"align":["right"]},{"label":["intercept_se"],"name":[10],"type":["dbl"],"align":["right"]},{"label":["intercept_z"],"name":[11],"type":["dbl"],"align":["right"]},{"label":["intercept_p"],"name":[12],"type":["dbl"],"align":["right"]},{"label":["ratio"],"name":[13],"type":["dbl"],"align":["right"]},{"label":["ratio_se"],"name":[14],"type":["dbl"],"align":["right"]},{"label":["h2_observed"],"name":[15],"type":["dbl"],"align":["right"]},{"label":["h2_observed_se"],"name":[16],"type":["dbl"],"align":["right"]},{"label":["h2_liability"],"name":[17],"type":["dbl"],"align":["right"]},{"label":["h2_liability_se"],"name":[18],"type":["dbl"],"align":["right"]},{"label":["h2_z"],"name":[19],"type":["dbl"],"align":["right"]},{"label":["h2_p"],"name":[20],"type":["dbl"],"align":["right"]}],"data":[{"1":"A04","2":"Diagnoses - main ICD10: A04 Other bacterial intestinal infections","3":"337199","4":"535","5":"336664","6":"0.001586600","7":"1.0183712","8":"1.0188369","9":"0.9966452","10":"0.008276166","11":"-0.4053559","12":"0.65739202","13":"-0.1826116","14":"0.4504969","15":"0.0028095833","16":"0.002241071","17":"0.16872483","18":"0.1345838","19":"1.2536790","20":"0.1049793","_rn_":"1"},{"1":"A41","2":"Diagnoses - main ICD10: A41 Other septicaemia","3":"337199","4":"383","5":"336816","6":"0.001135830","7":"1.0039766","8":"1.0073638","9":"1.0108026","10":"0.008004370","11":"1.3495908","12":"0.08857364","13":"2.7165308","14":"2.0128551","15":"-0.0017452369","16":"0.002170532","17":"-0.13826934","18":"0.1719641","19":"-0.8040595","20":"0.7893187","_rn_":"2"},{"1":"A63","2":"Diagnoses - main ICD10: A63 Other predominantly sexually transmitted diseases, not elsewhere classified","3":"337199","4":"104","5":"337095","6":"0.000308423","7":"0.9877491","8":"0.9900488","9":"0.9919709","10":"0.008191342","11":"-0.9801896","12":"0.83650373","13":"NA","14":"NA","15":"-0.0004110605","16":"0.002020145","17":"-0.09839155","18":"0.4835424","19":"-0.2034807","20":"0.5806203","_rn_":"3"},{"1":"A87","2":"Diagnoses - main ICD10: A87 Viral meningitis","3":"337199","4":"99","5":"337100","6":"0.000293595","7":"0.9976410","8":"0.9988046","9":"1.0035362","10":"0.008345291","11":"0.4237400","12":"0.33587771","13":"NA","14":"NA","15":"-0.0027615436","16":"0.002247142","17":"-0.68967349","18":"0.5612057","19":"-1.2289139","20":"0.8904480","_rn_":"4"},{"1":"B02","2":"Diagnoses - main ICD10: B02 Zoster [herpes zoster]","3":"337199","4":"111","5":"337088","6":"0.000329182","7":"0.9932130","8":"1.0005049","9":"1.0171686","10":"0.008697340","11":"1.9740115","12":"0.02419022","13":"NA","14":"NA","15":"-0.0044459925","16":"0.002064065","17":"-1.00617118","18":"0.4671180","19":"-2.1539981","20":"0.9843798","_rn_":"5"},{"1":"B18","2":"Diagnoses - main ICD10: B18 Chronic viral hepatitis","3":"337199","4":"107","5":"337092","6":"0.000317320","7":"0.9983473","8":"0.9968526","9":"1.0057417","10":"0.009299706","11":"0.6174027","12":"0.26848458","13":"NA","14":"NA","15":"-0.0013849028","16":"0.002480363","17":"-0.32347240","18":"0.5793395","19":"-0.5583469","20":"0.7116962","_rn_":"6"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+</div>
+
+&nbsp;
+<hr />
+<p style="text-align: center;">A work by <a href="https://github.com/holtzy/">Yan Holtz</a></p>
+<p style="text-align: center;"><span style="color: #808080;"><em>Yan.holtz.data@gmail.com</em></span></p>
+
+<!-- Add icon library -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<!-- Add font awesome icons -->
+<p style="text-align: center;">
+	<a href="https://twitter.com/r_graph_gallery?lang=en" class="fa fa-twitter"></a>
+	<a href="https://www.linkedin.com/in/yan-holtz-2477534a/" class="fa fa-linkedin"></a>
+	<a href="https://github.com/holtzy/" class="fa fa-github"></a>
+</p>
+
+&nbsp;
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
