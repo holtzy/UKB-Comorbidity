@@ -277,7 +277,7 @@ Three version of this count table are thus provided and available on [github](ht
 Heritabilities of 303 diseaseas have been recovered from the Neale's lab website.
 We have 14 mental diseases here.
 ```{r}
-Herit=read.table("0_DATA/ukbb_all_h2part_results.txt", sep="\t", header = T)
+Herit=read.table("0_DATA/ukbb_all_h2part_results.txt.gz", sep="\t", header = T)
 Herit=Herit[ substr(Herit$phenotype, 1, 1) %in% LETTERS , c(1:20) ]
 Herit=Herit %>% arrange(phenotype)
 #dim(Herit)

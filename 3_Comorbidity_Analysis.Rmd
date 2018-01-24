@@ -166,7 +166,7 @@ comoL3_long = comoL3 %>% as.data.frame() %>% cbind(disease1 = rownames(comoL3)) 
 The level3 has `nrow(comoL3)` levels. That means `(nrow(comoL3)^2-nrow(comoL3))/2` pairs to analyse
 
 ```{r, results='asis', fig.align="center"}
-datatable(comoL3_long, filter = 'top', rownames = FALSE , options = list(pageLength = 5))
+#datatable(comoL3_long, filter = 'top', rownames = FALSE , options = list(pageLength = 5))
 ```
 
 
