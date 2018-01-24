@@ -9,6 +9,8 @@ navbar:
       href: 1_DataWrangling.html
     - text: "explore UKB"
       href: 2_Exploratory_Analysis.html
+    - text: "Como"
+      href: 3_Comorbidity_Analysis.html
 output:
   html_document:
       theme: "lumen"
