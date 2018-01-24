@@ -4,12 +4,12 @@ author: "by [Yan Holtz](https://github.com/holtzy/) - `r format(Sys.time(), '%d 
 ---
 
 
-This document analyse the relationship between every diseases in the [UKBiobank](http://www.ukbiobank.ac.uk/data-showcase/) dataset. What it does:  
+This document analyse the co-occurence of diseases (comorbidity) in the [UKBiobank](http://www.ukbiobank.ac.uk/data-showcase/) dataset. What it does:  
 
-  
-* Load the comorbidity matrix  
-* Calculate Comorbidity Index (CI) for each level  
-* Visualize it  
+* Load the disease count matrix  
+* Calculate Comorbidity Index (CI)
+* Provide an interactive table giving these data
+* Make a few dataviz on it
 
 
 ```{r, message=FALSE, warning=FALSE}
@@ -17,7 +17,6 @@ library(readr)
 library(tidyverse)
 library(treemap)
 library(RColorBrewer)
-library(lubridate)
 library(xtable)
 library(knitr)
 library(d3heatmap)
@@ -25,27 +24,30 @@ library(plotly)
 library(ggraph)       # For edge bundle
 library(igraph)       # For edge bundle
 library(ggrepel)
+library(DT)
 ```
 
 
 
 
-#Load Files and libraries {.tabset .tabset-fade .tabset-pills}
 
 
 
+
+
+#Load Files {.tabset .tabset-fade .tabset-pills}
+***
 
 
 
 ##ICD10
-The human diseases are classified by the [WHO](https://en.wikipedia.org/wiki/World_Health_Organization) (World Health Organization) disease classification ( International Statistical Classification of Diseases: [ICD](http://apps.who.int/classifications/icd10/browse/2010/en)). This file is quite huge: ~19000 lines. Each type of disease is coded. Example: A00=cholera. There are several nivel of classification. 
+The human diseases are classified by the [WHO](https://en.wikipedia.org/wiki/World_Health_Organization) (World Health Organization) disease classification ( International Statistical Classification of Diseases: [ICD](http://apps.who.int/classifications/icd10/browse/2010/en)). This file is quite huge: ~19000 lines. Each type of disease is coded. Example: A00=cholera. There are several nivel of classification.  
 
-This document is described extensively here. Let's load it and have a look to it:
+This document is described extensively [here](https://holtzy.github.io/Visualizing-the-ICD10-Classification/). Let's load it.
 
 ```{r}
 #Read the file
 load("0_DATA/WHO_disease_classification_clean.R")
-head(ICD)
 ```
 
 It is important to note that a few groups will be excluded from the analysis: 
@@ -56,13 +58,14 @@ It is important to note that a few groups will be excluded from the analysis:
 
 
 Just a memo for the link letter - chapter
-```{r}
-ICD %>% mutate(letter=substr(meaning_L2,1,1)) %>% select( meaning_L1, letter) %>% unique
+```{r, warning=FALSE, message=FALSE, align="center"}
+tmp = ICD %>% mutate(letter=substr(meaning_L2,1,1)) %>% select( meaning_L1, letter) %>% droplevels() %>% unique()
+datatable(tmp, rownames = FALSE , width="60%", options = list(pageLength = 5, dom = 't') )
 ```
 
 
-##Como matrix {.tabset .tabset-fade .tabset-pills}
-The como matrices have been calculated previously (script data_wrangling).  
+##Disease occurence counts {.tabset .tabset-fade .tabset-pills}
+The como matrices have been calculated previously (see the [Get data](file:///Users/y.holtz/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/UKB-Comorbidity/1_DataWrangling.html) tab.).  
 They are square matrix giving the number of time each pair of disease has been observed. It has been calculated for several levels of classification.  
 Let's load them level by level: the diagonal describes how many times a disease has been observed, and every other numbers describes how many time a pair of disease has been observed.
 
@@ -86,10 +89,10 @@ comoL1= comoL1[ -toremove, -toremove ]
 comoL1_long = comoL1 %>% as.data.frame() %>% cbind(disease1 = rownames(comoL1)) %>% gather(disease2, value, -disease1 ) %>% filter(!is.na(value))
 ```
 
-The level1 has `nrow(comoL1)` levels (22 - 3 removed cause not real disease -1 for perinatal). That means `nrow(comoL1)^2/2` pairs to analyse
+The level1 has `r nrow(comoL1)` levels (22 - 3 removed cause not real disease -1 for perinatal). That means `r nrow(comoL1)^2/2` pairs to analyse
 
 ```{r, results='asis', fig.align="center"}
-comoL1[1:5, 1:5]
+datatable(comoL1_long, filter = 'top', rownames = FALSE, options = list(pageLength = 5) )
 ```
 
 
@@ -120,16 +123,13 @@ comoL2= comoL2[ -toremove, -toremove ]
 
 # Create long format
 comoL2_long = comoL2 %>% as.data.frame() %>% cbind(disease1 = rownames(comoL2)) %>% gather(disease2, value, -disease1 ) %>% filter(!is.na(value))
-
-# Number of pairs
-(nrow(comoL2)^2 - nrow(comoL2)) /2
-nrow(comoL2_long) - nrow(comoL2)
 ```
 The level2 now has `nrow(comoL2)` levels. That means `( nrow(comoL2)^2-nrow(comoL2) )/2` pairs to analyse
 
-```{r  results='asis', fig.align="center"}
-comoL2[1:5, 1:5]
+```{r, results='asis', fig.align="center"}
+datatable(comoL2_long, filter = 'top', rownames = FALSE, options = list(pageLength = 5) )
 ```
+
 
 
 
@@ -162,17 +162,13 @@ dim(comoL3)
 
 # Create long format
 comoL3_long = comoL3 %>% as.data.frame() %>% cbind(disease1 = rownames(comoL3)) %>% gather(disease2, value, -disease1 ) %>% filter(!is.na(value))
-
-# Number of pairs
-(nrow(comoL3)^2 - nrow(comoL3)) /2
-nrow(comoL3_long) - nrow(comoL3)
-
 ```
 The level3 has `nrow(comoL3)` levels. That means `(nrow(comoL3)^2-nrow(comoL3))/2` pairs to analyse
 
-```{r my_table2, results='asis', fig.align="center"}
-comoL3[1:5, 1:5] %>% as.data.frame()
+```{r, results='asis', fig.align="center"}
+datatable(comoL3_long, filter = 'top', rownames = FALSE , options = list(pageLength = 5))
 ```
+
 
 
 
@@ -187,13 +183,17 @@ comoL3[1:5, 1:5] %>% as.data.frame()
 
 
 #Calculate como index {.tabset .tabset-fade .tabset-pills}
-
+***
 We define the comorbidity index (CI) by CI = P(D1-D2) / P(D1)*P(D2) with P(D1) beeing the proportion of people having the disease 1.
 So from the count matrix we have it's quite straight forward to calculate CIs.
 
+```{r}
+load("0_DATA/Como_Objects.R")
+```
+
 ##Level1
 Let's use a smart way to calculate it --> make it instantly! I output 2 formats: long and square
-```{r}
+```{r, eval=FALSE}
 # First, I transform the number of occurence of each disease / pair of disease in a proportion.
 tmp=comoL1/500000
 
@@ -209,7 +209,7 @@ CI_L1=tmp/multi
 diag(CI_L1)=NA
 
 # Save it as .csv
-write.table(CI_L1, file="~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Comorbidity_Index_Matrix_Level1.csv", sep=";", quote=F, dec=",")
+write.table(CI_L1, file="0_DATA/Comorbidity_Index_Matrix_Level1.csv.gz", sep=";", quote=F, dec=",")
 
 # And make a long format (always useful)
 tmp=CI_L1
@@ -219,11 +219,14 @@ tmp=gather(tmp, "D2", "value", -D1)
 CI_L1_long=na.omit(tmp)
 ```
 
+```{r, warning=FALSE}
+datatable(CI_L1_long, filter = 'top', rownames = FALSE , options = list(pageLength = 5))
+```
 
 
 ##Level2
 Let's use a smart way to calculate it --> make it instantly! I output 2 formats: long and square
-```{r}
+```{r, eval=FALSE}
 # First, I transform the number of occurence of each disease / pair of disease in a proportion.
 tmp=comoL2/500000
 
@@ -239,7 +242,7 @@ CI_L2=tmp/multi
 diag(CI_L2)=NA
 
 # Save it as .csv
-write.table(CI_L2, file="~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Comorbidity_Index_Matrix_Level2.csv", sep=";", quote=F, dec=",")
+write.table(CI_L2, file="0_DATA/Comorbidity_Index_Matrix_Level2.csv", sep=";", quote=F, dec=",")
 
 # And make a long format (always useful)
 tmp=CI_L2
@@ -250,10 +253,13 @@ CI_L2_long=na.omit(tmp)
 ```
 
 
+```{r, warning=FALSE}
+datatable(CI_L2_long, filter = 'top', rownames = FALSE, options = list(pageLength = 5) )
+```
 
 ##Level3
 Let's use a smart way to calculate it --> make it instantly! I output 2 formats: long and square
-```{r}
+```{r, eval=FALSE}
 # First, I transform the number of occurence of each disease / pair of disease in a proportion.
 tmp=comoL3/500000
 
@@ -269,7 +275,7 @@ CI_L3=tmp/multi
 diag(CI_L3)=NA
 
 # Save it as .csv
-write.table(CI_L3, file="~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Comorbidity_Index_Matrix_Level3.csv", sep=";", quote=F, dec=",")
+write.table(CI_L3, file="0_DATA/Comorbidity_Index_Matrix_Level3.csv", sep=";", quote=F, dec=",")
 
 # And make a long format (always useful)
 tmp=CI_L3
@@ -279,26 +285,37 @@ tmp=gather(tmp, "D2", "value", -D1)
 CI_L3_long=na.omit(tmp)
 ```
 
-
+Data to long to be displayed. ( `r nrow(CI_L3_long)` pairs of diseases.. )
+```{r, results='asis', fig.align="center"}
+#datatable(CI_L3_long, filter = 'top', rownames = FALSE, options = list(pageLength = 5) )
+```
 
 
 ##Save
 It could be handy to save all these matrices as a unique R object for further analysis
 ```{r}
-save(comoL1, comoL1_long, comoL2, comoL2_long, comoL3, comoL3_long, CI_L1, CI_L1_long, CI_L2, CI_L2_long, CI_L3, CI_L3_long, file="0_DATA/Como_Objects.R")
+#save(comoL1, comoL1_long, comoL2, comoL2_long, comoL3, comoL3_long, CI_L1, CI_L1_long, CI_L2, CI_L2_long, CI_L3, CI_L3_long, file="0_DATA/Como_Objects.R")
 ```
 
 Now I can load all these files easily!
 ```{r}
-load("0_DATA/Como_Objects.R")
+#load("0_DATA/Como_Objects.R")
 ``` 
  
  
  
  
+ 
+ 
+ 
+ 
+ 
+ 
 
-# 3- Prevalence of individual disease
+#Disease prevalences {.tabset .tabset-fade .tabset-pills}
+***
 
+##Level1
 Let's check what group disorder is the most frequent? Already done in another RMD but always good to double check:
 ```{r, warning=FALSE, message=FALSE}
 comoL1_long %>% ungroup() %>% filter(disease1 == disease2) %>% arrange(value) %>% mutate(disease1 =factor(disease1 , disease1 )) %>%
@@ -311,14 +328,9 @@ comoL1_long %>% ungroup() %>% filter(disease1 == disease2) %>% arrange(value) %>
   
 OK, it's interesting to note that it's not uniformaly distributed at ALL. More than 150K are concerned by Digestive problems. Mental=39391, what is ~8% of the population. Should be way more.
 
-Show this data in a table:
-```{r results='asis', fig.align="center"}
-tmp=comoL1_long %>% ungroup() %>% filter(disease1 == disease2) %>% arrange(desc(value)) %>% mutate(disease1 =factor(disease1 , disease1 )) %>% select(disease1, value)
-kable(xtable(tmp))
-```
 
 
-What about the level2?
+##Level2
 ```{r, warning=FALSE, message=FALSE}
 comoL2_long %>% ungroup() %>% filter(disease1 == disease2) %>% arrange(value) %>% mutate(disease1 =factor(disease1 , disease1 )) %>%
   head(20) %>%
@@ -329,24 +341,46 @@ comoL2_long %>% ungroup() %>% filter(disease1 == disease2) %>% arrange(value) %>
     coord_flip()
 ```
 
-
-
-
-Just a quick comparison with Andrea's data. In his tool he says prevalence of R19 is 11987 people. I have:
+##Level3
+Distribution of the prevalence of level3
 ```{r}
-comoL3_long %>% filter( substr(disease1, 1 , 3) == "R19") %>% filter(disease1==disease2)
+comoL3_long %>% filter(disease1==disease2)%>%
+  ggplot( aes(x=value) ) +
+    geom_density( fill="skyblue", color=NA, alpha=0.6) +
+    scale_x_log10( breaks=c(10,100,1000,10000,100000) , labels = scales::comma) +
+    xlab("Occurence in # of cases") +
+    geom_vline(xintercept = 500, linetype="dashed")
 ```
+
+##Andrea's data
+Just a quick comparison with Andrea's data. In his tool he says prevalence of R19 is 11987 people. I have:
+```{r, warning=FALSE}
+tmp=comoL3_long %>% filter( substr(disease1, 1 , 3) == "R19") %>% filter(disease1==disease2)
+datatable(tmp, rownames = FALSE, options = list(pageLength = 5, dom='t') )
+```
+
+
 It is way more, but he uses only first diagnoses whearas I used first AND second diagnosis.
 
 And what are the most associated diseases?
 ```{r}
-CI_L3_long %>% filter( substr(D1, 1 , 3) == "R19") %>% arrange(desc(value)) %>% head(100)
+#CI_L3_long %>% filter( substr(D1, 1 , 3) == "R19") %>% arrange(desc(value)) %>% head(100)
 ```
 
-
+##Pedersen's data
 Can I compare these value with litterature? Pedersen et al, Danish register.
-```{r, fig.}
-pedersen=read.table("~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES/Occurence_Mental_Disease_Litterature.csv", sep=";", header=T)
+
+<style>
+  .col2 {
+    columns: 2 200px;         /* number of columns and width in pixels*/
+    -webkit-columns: 2 200px; /* chrome, safari */
+    -moz-columns: 2 200px;    /* firefox */
+  }
+</style>
+
+<div class="col2">
+```{r, warning=FALSE, message=FALSE}
+pedersen=read.table("0_DATA/Occurence_Mental_Disease_Litterature.csv", sep=";", header=T)
 
 p=comoL3_long %>% 
   filter(disease1==disease2) %>% 
@@ -366,19 +400,7 @@ p=comoL3_long %>%
 p
 p +  scale_x_log10() + xlab("Prevalence in UKB (Log scale)")
 ```
-
-
-Distribution of the prevalence of level3
-```{r}
-comoL3_long %>% filter(disease1==disease2)%>%
-  ggplot( aes(x=value) ) +
-    geom_density( fill="skyblue", color=NA, alpha=0.6) +
-    scale_x_log10( breaks=c(10,100,1000,10000,100000) , labels = scales::comma) +
-    xlab("Occurence in # of cases") +
-    geom_vline(xintercept = 500, linetype="dashed")
-    
-
-```
+</div>
 
 
 
@@ -392,17 +414,21 @@ comoL3_long %>% filter(disease1==disease2)%>%
 
 
 
-#Como occurence matrix
 
-How many diseases do we have for each level:   
-Level1: `r nrow(CI_L1_long)` ; Subgroup:  `r nrow(CI_L2_long)` ; Level3: `r nrow(CI_L3_long)`  
+
+#Disease occurence matrix {.tabset .tabset-fade .tabset-pills}
+***
+
+How many pairs of disease do we have for each level:   
+Level1: `r nrow(CI_L1_long)` | Level2:  `r nrow(CI_L2_long)` | Level3: `r nrow(CI_L3_long)`  
 Knowing that we have 500K individuals, working with so many sub-subgroups does not make sense!  
-Working with Subgroup could may be possible, but we have to expect that some pair of disease will be really rare. Thus their related comorbidity index will be very imprecise.
+Working with Subgroup may be possible, but we have to expect that some pair of disease will be really rare. Thus their related comorbidity index will be very imprecise.
 The best option is thus probably to work with groups, or doing a new classification like Oleguer and John did. Make sense.
 
 
-## Distribution
+## Distribution {.tabset .tabset-fade .tabset-pills}
 
+###Level1
 What is the distribution of the number of patient with each pair?
 ```{r, warning=FALSE, message=FALSE}
 comoL1_long %>%
@@ -413,6 +439,7 @@ comoL1_long %>%
     xlab("Number of people with the disease pair") 
 ```
 
+###Level2
 At the level 2 I have 420 pairs with no patient at all. And a lot of pairs with a few patient only.. How can I handle this when I calculate comorbidity Index?
 ```{r, warning=FALSE, message=FALSE}
 comoL2_long %>%
@@ -425,6 +452,7 @@ comoL2_long %>%
 
 ```
 
+###Level3
 ```{r, warning=FALSE, message=FALSE}
 comoL3_long %>%
   filter(disease1 != disease2) %>%
@@ -436,16 +464,30 @@ comoL3_long %>%
 ```
 
 
-## Extreme value.
+## Extreme value {.tabset .tabset-fade .tabset-pills}
+What are the most common pairs of diseases observed in the UKB?
 
-What are the extreme values = pairs of disease with many many people?
+###Level1
 ```{r}
-comoL1_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% head(10)
-comoL2_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% head(10)
-comoL3_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% head(10)
+tmp=comoL1_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% head(50)
+datatable(tmp, rownames = FALSE , options = list(pageLength = 5) )
+```
+
+###Level2
+```{r}
+tmp=comoL2_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% head(50)
+datatable(tmp, rownames = FALSE , options = list(pageLength = 5) )
+```
+
+###Level1
+```{r}
+tmp=comoL3_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% head(50)
+datatable(tmp, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
 
+
+## Heatmap
 See the occurence matrix as a heatmap:
 ```{r}
 tmp=comoL1
@@ -464,11 +506,12 @@ d3heatmap(tmp, Rowv=FALSE, Colv=FALSE, cexRow=0.7, cexCol=0.7, color="Blues")
 
 
 
-#Comorbidity Index
+#Comorbidity Index {.tabset .tabset-fade .tabset-pills}
+***
 
+##Distribution {.tabset .tabset-fade .tabset-pills}
 
-##Distribution 
-
+###Level1
 We have a lot of 0 = pair of disease has never been observed. Most of the value are then between 0 and 20 what makes sense. And we have some extreme value due to very rare disease.
 ```{r, warning=FALSE, message=FALSE}
 CI_L1_long %>%
@@ -486,6 +529,7 @@ CI_L1_long %>%
   xlab("Comorbidity index (Log scale)") 
 ```
 
+###Level2
 Distribution of CI at level 2: 
 ```{r, warning=FALSE, message=FALSE}
 CI_L2_long %>%
@@ -503,6 +547,7 @@ CI_L2_long %>%
 ```
 
 
+###Level3
 Distribution of CI at level 3: 
 ```{r, warning=FALSE, message=FALSE}
 CI_L3_long %>%
@@ -521,10 +566,11 @@ CI_L3_long %>%
 ```
 
 
+###Faceting
 Same thing, but faceting by level1. A few thoughts:  
-- extreme CI value comes for groups C and T  
-- J, O and F (mental), have really strong CI.
-- R has a lot of <1 CI.
+* extreme CI value comes for groups C and T  
+* J, O and F (mental), have really strong CI.
+* R has a lot of <1 CI.
 
 ```{r, warning=FALSE, message=FALSE}
 CI_L2_long %>%
@@ -557,7 +603,7 @@ CI_L2_long %>%
 
 
 
-
+###Boxplot
 Same thing, but with boxplots instead. Without the log scale it allows to understand where the outliers are: T, Q, F, C, B
 ```{r, warning=FALSE, message=FALSE}
 CI_L2_long %>%
@@ -583,6 +629,7 @@ CI_L2_long %>%
 
 
 
+###Violin
 With a log scale we can compare the groups. Interesting to see that highest comorbidity index are the one concerning Mental diseases. The group O is impressive. O = Chapter XV = Pregnancy, childbirth and the puerperium
 ```{r, warning=FALSE, message=FALSE, fig.width=13, fig.height=4}
 CI_L2_long %>%
@@ -613,25 +660,29 @@ The comorbidity index is 1 if the pair of disease occurs only by chance. It is l
 
 
 
-##Extreme values
+##Extreme values {.tabset .tabset-fade .tabset-pills}
 
 What are the 5 strongest comorbidity index?
 
-Level1
-```{r results='asis', fig.align="center"}
-tab=CI_L1_long %>% arrange(desc(value)) %>% head(5)
-kable(xtable(tab))
+###Level1
+```{r}
+tmp=CI_L1_long %>% arrange(desc(value)) %>% head(100)
+datatable(tmp, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
 
-Level2
-```{r results='asis', fig.align="center"}
-tab=CI_L2_long %>% arrange(desc(value)) %>% head(10)
-tab
+
+###Level2
+```{r}
+tmp=CI_L2_long %>% arrange(desc(value)) %>% head(100)
+datatable(tmp, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
-Extreme CI values for level 3? What are they?
-```{r results='asis', fig.align="center"}
+
+###Level3
+Extreme CI values for level 3? What are they?  
+I don't show it, too many values
+```{r, warning=FALSE}
 # Add the information of the occurence for each pair.
 tmp=comoL3_long %>% filter(disease1==disease2) %>% mutate(occurence=value) %>% select(disease1, occurence)
 tab=CI_L3_long %>% 
@@ -639,11 +690,11 @@ tab=CI_L3_long %>%
   left_join(., tmp, by=c("D1"="disease1")) %>%
   left_join(., tmp, by=c("D2"="disease1")) %>%
   arrange(desc(value.x)) %>% head(10)
-tab  
+#datatable(tab, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
 And what about the value < 1?
-```{r results='asis', fig.align="center"}
+```{r, warning=FALSE}
 # Add the information of the occurence for each pair.
 tmp=comoL3_long %>% filter(disease1==disease2) %>% mutate(occurence=value) %>% select(disease1, occurence)
 tab=CI_L3_long %>% 
@@ -652,11 +703,11 @@ tab=CI_L3_long %>%
   left_join(., tmp, by=c("D2"="disease1")) %>%
   rowwise() %>% mutate(occurence_mean = mean(c(occurence.x, occurence.y))) %>%
   arrange(value.x, desc(occurence_mean))
-tab
+datatable(tab, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
 And what if we keep only low value but with high occurence of both diseases of the pair?
-```{r results='asis', fig.align="center"}
+```{r, warning=FALSE}
 # Add the information of the occurence for each pair.
 tmp=comoL3_long %>% filter(disease1==disease2) %>% mutate(occurence=value) %>% select(disease1, occurence)
 tab=CI_L3_long %>% 
@@ -666,11 +717,13 @@ tab=CI_L3_long %>%
   rowwise() %>% mutate(occurence_mean = mean(c(occurence.x, occurence.y))) %>%
   arrange(value.x, desc(occurence_mean)) 
 a=tab  %>% filter(occurence.x>10000, occurence.y>10000)
+datatable(a, rownames = FALSE , options = list(pageLength = 5) )
+
 ```
 
 
 
-
+## Visualization
 Let's start with a basic heatmap of the comorbidity index at level 1. Here I just display the matrix as it is, without clustering.
 ```{r}
 d3heatmap(CI_L1, Rowv=FALSE, Colv=FALSE, cexRow=0.7, cexCol=0.7, xaxis_height = 100, yaxis_width = 100)
@@ -699,11 +752,12 @@ If we use clusterisation with pearson correlation. This time, we check if the pa
 
 
 
-#Hierarchical Edge Bundling all groups
+#Hierarchical Edge Bundling all groups {.tabset .tabset-fade .tabset-pills}
+***
+In the figure below, all the diseases of level2 are displayed around a circle. Dots size are proportional to the occurence of the disease. Color depends of disease group (22 groups). 2 diseases are interconnected only if their comorbidity index is over a certain threshold.
 
-Can we try to visualize data through hierarchical edge bundling?
+
 ```{r, warning=FALSE, message=FALSE}
-
 # Create edges data frame. I start with the leaf level only
 edges=ICD %>% filter(meaning_L2 %in% colnames(comoL2) ) %>% select(meaning_L1, meaning_L2) %>% unique
 colnames(edges)=c("from", "to")
@@ -740,8 +794,8 @@ vertices=rbind(toadd, vertices)
 #colnames(a)=c("from", "to")
 ```
 
-
-```{r, fig.width=15, fig.height=15, warning=FALSE, message=FALSE}
+###Threshold=10
+```{r, fig.width=15, fig.height=15, warning=FALSE, message=FALSE, echo=FALSE}
 
 back_color="white"
 
@@ -785,7 +839,7 @@ dev.off()
 ```
 
 Here we are:
-![snp](/Users/y.holtz/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/3_FIGURE/Edge_Bundle_Como_L2.png)
+![img](IMG/Edge_Bundle_Como_L2.png)
 
 
 
