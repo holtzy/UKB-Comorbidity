@@ -1,5 +1,47 @@
 ---
-title: "Nick's Website"
+title: "A clean and uncluttered template"
+author: "by [Yan Holtz](https://github.com/holtzy/) - `r format(Sys.time(), '%d %B %Y')`"
+output:
+  epuRate::epurate:
+    toc: FALSE
+    code_folding: "hide"
 ---
 
-Hello, World!
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+  
+```{r echo=FALSE}
+# Just to add space between the introduction of the document
+knitr::asis_output(htmltools::htmlPreserve("<br><br>"))
+```
+
+
+> I find it not too bad to start with a couple of sentences of introduction. Explain briefly what this document is going to talk about. May be add a [useful link](www.r-graph-gallery.com) relative to this project
+
+
+# Get the data
+***
+Usually I always start by loading libraries. The tidyverse is probably the package I use the most. Quite difficult to imagine analysing data without it. It is a good practice to load all the packages in the same time. It allows to know exactly what is needed to reproduce your analysis.
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rmarkdown)    # You need this library to run this template.
+library(epuRate)      # Install with devtools: install_github("holtzy/epuRate", force=TRUE)
+```
+
+Then I explain what is my input data and I load it. Here is how it looks like:
+```{r}
+# Show it:
+mtcars %>% head(5)
+```
+
+This file has `r nrow(mtcars)` lines and `r ncol(mtcars)` columns. It is ready to be analysed.
+
+
+
+
+
+# A few analysis {.tabset .tabset-fade .tabset-pills}
+***
+Here are 3 version of a circular barplot that you can find in the R graph gallery. Note that the figure is centered. You can change the size of the plot with **fig.width** and **fig.height**  
+

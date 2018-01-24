@@ -1,9 +1,11 @@
-name: "nicks-website"
+name: "Comorbidity in the UK Biobank"
 output_dir: "."
 navbar:
-  title: "Nicks Website"
-  left:
-    - text: "Home"
+  title: "Comorbidity in the UK Biobank"
+  right:
+    - text: "start"
       href: index.html
-    - text: "About Me"
-      href: about.html
+    - text: "End"
+      href: step1.html
+output:
+  epuRate::epurate:
