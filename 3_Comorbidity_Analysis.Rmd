@@ -416,7 +416,7 @@ p +  scale_x_log10() + xlab("Prevalence in UKB (Log scale)")
 
 
 
-#Disease occurence matrix {.tabset .tabset-fade .tabset-pills}
+#Pairs occurence matrix {.tabset .tabset-fade .tabset-pills}
 ***
 
 How many pairs of disease do we have for each level:   
@@ -752,10 +752,9 @@ If we use clusterisation with pearson correlation. This time, we check if the pa
 
 
 
-#Hierarchical Edge Bundling all groups {.tabset .tabset-fade .tabset-pills}
+#Hierarchical Edge Bundling (between groups) {.tabset .tabset-fade .tabset-pills}
 ***
 In the figure below, all the diseases of level2 are displayed around a circle. Dots size are proportional to the occurence of the disease. Color depends of disease group (22 groups). 2 diseases are interconnected only if their comorbidity index is over a certain threshold.
-
 
 ```{r, warning=FALSE, message=FALSE}
 # Create edges data frame. I start with the leaf level only
@@ -791,19 +790,15 @@ edges=rbind(top, edges)
 # and add it to vertices
 toadd=data.frame(name=c(0,as.character(top$to)) ,val=NA ,meaning_L1=NA, index=NA, angle=NA, hjust=NA, labels=NA)
 vertices=rbind(toadd, vertices)
-#colnames(a)=c("from", "to")
-```
-
-###Threshold=10
-```{r, fig.width=15, fig.height=15, warning=FALSE, message=FALSE, echo=FALSE}
 
 back_color="white"
 
 # Create graph structure
 mygraph <- graph_from_data_frame( edges, vertices = vertices)
 
+plot_bundle=function(mythres){
 # Transform the adjacency connection of comorbidity index in 2 vectors: from and to.
-threshold=10
+threshold=mythres
 connexions = CI_L2_long %>% filter(value>threshold) %>% select(D1, D2)
 from = match( connexions$D1, vertices$name)
 to = match( connexions$D2, vertices$name)
@@ -832,28 +827,198 @@ p=ggraph(mygraph, layout = 'dendrogram', circular = TRUE) +
     expand_limits(x = c(-2, 2), y = c(-2, 2))
     #geom_segment( x = 2, y = 2, xend = 10, yend = 10, colour = "black", alpha=1, size=4 , inherit.aes = FALSE ) +
 
-# save as png?
-png("IMG/Edge_Bundle_Como_L2.png", width=200, height=200, units = "mm", res=300)
-p
+  return(p)
+}
+```
+
+##Threshold=30
+
+```{r, warning=FALSE}
+png("IMG/Edge_Bundle_Como_L2_thres30.png", width=200, height=200, units = "mm", res=300)
+plot_bundle(30)
 dev.off()
 ```
 
-Here we are:
-![img](IMG/Edge_Bundle_Como_L2.png)
+![img](IMG/Edge_Bundle_Como_L2_thres30.png)
+
+
+
+
+
+##Threshold=20
+
+```{r, warning=FALSE}
+png("IMG/Edge_Bundle_Como_L2_thres20.png", width=200, height=200, units = "mm", res=300)
+plot_bundle(20)
+dev.off()
+```
+
+![img](IMG/Edge_Bundle_Como_L2_thres20.png)
+
+
+##Threshold=15
+
+```{r, warning=FALSE}
+png("IMG/Edge_Bundle_Como_L2_thres15.png", width=200, height=200, units = "mm", res=300)
+plot_bundle(15)
+dev.off()
+```
+
+![img](IMG/Edge_Bundle_Como_L2_thres15.png)
+
+
+
+##Threshold=10
+
+```{r, warning=FALSE}
+png("IMG/Edge_Bundle_Como_L2_thres10.png", width=200, height=200, units = "mm", res=300)
+plot_bundle(10)
+dev.off()
+```
+
+![img](IMG/Edge_Bundle_Como_L2_thres10.png)
+
+
+
+
+##Threshold=5
+
+```{r, warning=FALSE}
+png("IMG/Edge_Bundle_Como_L2_thres5.png", width=200, height=200, units = "mm", res=300)
+plot_bundle(5)
+dev.off()
+```
+
+![img](IMG/Edge_Bundle_Como_L2_thres5.png)
 
 
 
 
 
 
+#Hierarchical Edge Bundling (intra groups) {.tabset .tabset-fade .tabset-pills}
+***
+
+```{r, warning=FALSE, message=FALSE}
+make_edge_bundle=function(x, nchar, threshold, my_expand, title_size, label_size){
+  
+# select a chapter
+chapter=x
+chapter_name = ICD %>% filter(node_L1==x) %>% mutate(long=gsub("Diseases of the", "", long)) %>% select(short)   %>% unique()
+
+# Create the hierarchy data frame of the data.
+hierarchy= ICD %>% 
+  filter(node_L1==chapter) %>% 
+  select(meaning_L2, meaning_L3) %>% 
+  arrange(meaning_L2, meaning_L3) %>%
+  unique()
+colnames(hierarchy)=c("from", "to")
+
+# Create final nodes (leaves) data frame. For each point I need its size (num of occurence of the disease) + its group (to set its color) + it's heritability
+vertices = data.frame(name = unique( as.character(hierarchy$to)) ) 
+tmp=comoL3_long %>% filter(disease1 == disease2) %>% select(disease1, value) %>% mutate(val=value/max(value)*100)
+vertices = merge(vertices, tmp, by.x="name", by.y="disease1", all.x=T)
+vertices = merge( vertices, ICD, by.x="name", by.y = "meaning_L3", all.x=T) %>% select(name, val, meaning_L1, meaning_L2) %>% unique
+
+# calculate the ANGLE of the labels
+my_num=nrow(vertices)
+vertices$index=seq(1, nrow(vertices))
+vertices$angle= 90 - 360 * vertices$index/my_num
+vertices$hjust<-ifelse( vertices$angle < -90, 1, 0)
+vertices$angle<-ifelse(vertices$angle < -90, vertices$angle+180, vertices$angle)
+
+# Add upper part of the tree to vertices
+tmp=ICD %>% filter(meaning_L3 %in% vertices$name) %>% select(meaning_L1, meaning_L2) %>% unique()
+name=c(0, as.character(tmp$meaning_L1), as.character(tmp$meaning_L2)) %>% unique()
+toadd = data.frame( matrix(nrow = length(name), ncol = ncol(vertices)))
+names(toadd) = names(vertices)
+toadd$name=name
+vertices=rbind(toadd, vertices) %>% droplevels()
+
+# Add upper part of the tree to hierarchy
+tmp1=ICD %>% filter(meaning_L3 %in% vertices$name) %>% mutate(origin=0) %>% select(origin, meaning_L1) %>% unique()
+tmp2=ICD %>% filter(meaning_L3 %in% vertices$name) %>% select(meaning_L1, meaning_L2) %>% unique()
+colnames(tmp1) = colnames(tmp2) = c("from", "to")
+hierarchy=rbind(tmp1, tmp2, hierarchy)
+
+# Create graph structure
+mygraph <- graph_from_data_frame( hierarchy, vertices = vertices)
+
+# Transform the adjacency connection of comorbidity index in 2 vectors: from and to.
+connexions = CI_L3_long %>% filter( D1 %in% vertices$name) %>% filter( D2 %in% vertices$name) %>% filter(value>threshold) 
+
+# to number
+from = match( connexions$D1, vertices$name)
+to = match( connexions$D2, vertices$name)
+
+# Do the graph
+p=ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
+    
+    # Add the connections
+    geom_conn_bundle(data = get_con(from = from, to = to, value=connexions$value), alpha = 0.2, tension = 0.9, aes(size=11, colour = value)) + 
+    scale_edge_colour_distiller(palette = "RdPu", trans = "log") +
+  
+    # Add the points
+    geom_node_point(aes(filter = leaf, x = x*1.05, y=y*1.05, size=val, colour=meaning_L2), alpha=0.5) +
+    scale_color_manual(values= colorRampPalette(brewer.pal(9,"Paired"))(22)[sample(seq(1,22),40, replace=TRUE)]) +
+    scale_size_continuous(range = c(0.5,12)) +
+    
+    # Add the labels
+    geom_node_text(aes(x = x*1.1, y=y*1.1, filter = leaf, label=substr(name, 1, nchar), angle = angle, color=meaning_L2, hjust=hjust), size=label_size, alpha=1) +
+    
+    # General features
+    labs(x="", y="") +
+    theme_void() +
+    geom_label( aes(label=chapter_name[1,1]), x=0, y=1.4, size=title_size ) +
+    theme(
+        legend.position="none",
+        #plot.margin=unit(rep(-2,4),"cm"),
+        plot.background = element_rect(fill = "#f5f5f2", color = NA), 
+        panel.background = element_rect(fill = "#f5f5f2", color = NA) 
+    ) +
+    expand_limits(x = c(-my_expand, my_expand), y = c(-my_expand, my_expand)) 
+    
+return(p)
+}
+```
+
+
+
+
+
+##All
+```{r, warning=FALSE, message=FALSE}
+library(gridExtra)
+library(grid)
+
+my_list = vector("list", 15) 
+num=0
+for(i in c(11,12,13,14,9,3,4,7,1,19,2,6,10,5,15)){
+  num=num+1
+  my_list[[num]] = make_edge_bundle(i, nchar=3, threshold=20, my_expand=1.6, title_size=4 , label_size=2)
+}
+
+# Why does this does not work? do.call("grid.arrange", c(my_list, ncol=3))
+png( "IMG/all_edge_bundle.png", width=900, height=900)
+grid.arrange(my_list[[1]], my_list[[2]], my_list[[3]], my_list[[4]], my_list[[5]], my_list[[6]], my_list[[7]], my_list[[8]], my_list[[9]], my_list[[10]], my_list[[11]], my_list[[12]], my_list[[13]], my_list[[14]], my_list[[15]], ncol=4)
+dev.off()
+```
+
+![img](IMG/all_edge_bundle.png)
 
 
 
 
 
 
+##Mental disorders
 
+```{r, warning=FALSE}
+png( "IMG/Edge_Bundle_Mental.png", width=900, height=900)
+make_edge_bundle(x=5, nchar=30, threshold=40, my_expand=1.8, title_size=5, label_size=5)
+dev.off()
+```
 
-
+![img](IMG/Edge_Bundle_Mental.png)
 
 
