@@ -1,6 +1,6 @@
 
 ---
-title: "UKBiobank Exploratory Analysis"
+title: "Genetic correlation"
 author: "by [Yan Holtz](https://github.com/holtzy/) - `r format(Sys.time(), '%d %B %Y')`"
 ---
 
@@ -11,10 +11,17 @@ knitr::asis_output(htmltools::htmlPreserve("<br><br>"))
 ```
 
 
-This document aims to recover as much data as possible concerning genetic correlation between traits. It studies different options. Sometimes it just take GC from an external resource, sometimes I compute it myself.
-  
+This document aims to recover as much data as possible concerning genetic correlation between traits in the UKB. Several source of information are available:
+
+* the [LDHub website](http://ldsc.broadinstitute.org) provides GC between many pairs of traits
+* the [Neale lab](http://www.nealelab.is) provide GWAS summary statistics for 600+ diseases from the UKB. Using LDSC, I computed the GC between each trait. Result file is available [here](https://github.com/holtzy/UKB-Comorbidity/blob/master/0_DATA/Genetic_Correlation_of_UKB_diseases.txt.gz).
+
 ```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
+library(DT)
+
+# Load ICD
+load("0_DATA/WHO_disease_classification_clean.R")
 ```
 
 
@@ -25,19 +32,17 @@ library(tidyverse)
 
 
 
-#LDHub {.tabset .tabset-fade .tabset-pills}
+#GC from LDHub {.tabset .tabset-fade .tabset-pills}
 ***
+The LD Hub [website](http://ldsc.broadinstitute.org/lookup/) gives the genetic correlations (GC) between the pairs of many diseases. I downloaded the results for 221 traits (without 7 traits from ENIGMA). The website is [here](http://ldsc.broadinstitute.org/lookup/) and the link I clicked is [that one](http://ldsc.broadinstitute.org/static/media/LD-Hub_genetic_correlation_221x221_no_ENIGMA.xlsx). This has been done the 19/10/2017.
+
+The problem is that it is really hard to make the link between these traits and ICD10 classification codes.
 
 ##Get data
-The LD Hub [website](http://ldsc.broadinstitute.org/lookup/) gives the genetic correlations (GC) between the pairs of many diseases. I downloaded the results for 221 traits (without 7 traits from ENIGMA) using data from LD Hub. The website is [here](http://ldsc.broadinstitute.org/lookup/) and the link I clicked is [that one](http://ldsc.broadinstitute.org/static/media/LD-Hub_genetic_correlation_221x221_no_ENIGMA.xlsx). This has been done the 19/10/2017.
-
-This file has been saved in the dropbox. I can load it
-```{r}
-LDHubGC = read.table("0_DATA/LD-Hub_genetic_correlation_221x221_no_ENIGMA.csv.gz", header = TRUE, na.strings = "/", sep=";", dec=",")
-```
-
-And reformat it a little bit + Make a long format
+Load the file, reformat it, make a long format, look the 100 first lines:
 ```{r, warning=FALSE}
+LDHubGC = read.table("0_DATA/LD-Hub_genetic_correlation_221x221_no_ENIGMA.csv.gz", header = TRUE, na.strings = "/", sep=";", dec=",")
+
 # Change col and rownames
 colnames(LDHubGC) = colnames(LDHubGC) %>% gsub(".sumstats.gz", "", .) %>% gsub(".txt", "", .) %>% gsub(".gz", "", .) %>% gsub(".tab", "", .) %>% gsub(".sumstats", "", .) %>% gsub(".csv", "", .)
 LDHubGC[,1] = LDHubGC[,1] %>% gsub(".sumstats.gz", "", .) %>% gsub(".txt", "", .) %>% gsub(".gz", "", .) %>% gsub(".tab", "", .) %>% gsub(".sumstats", "", .) %>% gsub(".csv", "", .)
@@ -45,14 +50,18 @@ LDHubGC[,1] = LDHubGC[,1] %>% gsub(".sumstats.gz", "", .) %>% gsub(".txt", "", .
 
 # A few values are not understood by R, I put NA instead. ("NA", e10-8...)
 # Long format
-LDHubGC_long = LDHubGC %>% gather(key="disease2", value="GC" , -1) %>% rename_(disease1 = names(.)[1]) %>% mutate(GC = as.numeric(as.character(GC)))
+LDHubGC_long = LDHubGC %>% gather(key="disease2", value="GC" , -1) %>% rename_(disease1 = names(.)[1]) %>% mutate(GC = as.numeric(as.character(GC))) %>% filter(!is.na(GC))
 
 # Use the first column as a rownames for the wide format
 rownames(LDHubGC)=LDHubGC[,1]
 LDHubGC=LDHubGC[, -1]
 LDHubGC = apply(LDHubGC, 2, function(x){as.numeric(as.character(x))} )
 LDHubGC=as.matrix(LDHubGC)
+
+# show table
+datatable(head(LDHubGC_long,100), rownames = FALSE, options = list(pageLength = 5) )
 ```
+
 
 ##GC distribution
 First we can check what is the the distribution of GCs amoung the `r nrow(LDHubGC_long)` available correlations. It looks like we have a normal distribution of GC, centered on O.  
@@ -87,7 +96,7 @@ LDHubGC_long %>%
 ```
 
 ##Heatmap
-Heatmap of these GC:
+Completely useless heatmap
 ```{r, fig.width=9, fig.height=9}
 m=LDHubGC
 m[upper.tri(m)] <- t(m)[upper.tri(m)]
@@ -96,8 +105,6 @@ diag(m)=NA
 heatmap(m)
 ```
 
-What are the disease that could potentially interest me?:
--Schizophrenia.sumstats.gz
 
 
 
@@ -109,23 +116,23 @@ What are the disease that could potentially interest me?:
 
 
 
-#Summary Statistics from UKB {.tabset .tabset-fade .tabset-pills}
+#GC from GWAS Sumstat (UKB) {.tabset .tabset-fade .tabset-pills}
 ***
+The [Neale lab](http://www.nealelab.is) provide GWAS summary statistics for 600+ diseases from the UKB. Using LDSC, I computed the GC between each trait. Result file is available [here](https://github.com/holtzy/UKB-Comorbidity/blob/master/0_DATA/Genetic_Correlation_of_UKB_diseases.txt.gz). This part gives the code I use to compute these GC:
 
+
+##GWAS Sumstat
 Summary statistics of GWAS on UKB are available for many traits. There are here:
-```
-cd /afm01/Q0286/huanwei.wang/reference/UKB_neale/gwas_results
-```
+
+> /afm01/Q0286/huanwei.wang/reference/UKB_neale/gwas_results
 
 It appears that GWAS summary statistics are available for several mental disorders:
 F10,F20,F23,F25,F30,F31,F32,F33,F41,F43,F45,F52,F60,F99.
 
-With these summary, we should be able to compute genetic correlations.
 
 
-##Install the LDSC program
-
-```{r, eval=FALSE}
+##Install LDSC
+```{r, eval=FALSE, echo=TRUE}
 # good repo
 cd /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/GENETIC_CORRELATION
 
@@ -144,7 +151,7 @@ git clone https://github.com/bulik/ldsc.git
 
 
 
-## 2.2 Reformat the files to be readable by LDSC
+##Reformat
 ```{r, eval=FALSE}
 # First: copy the UKB sumstat = input data
 cd /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/GENETIC_CORRELATION/GWAS_SUMSTAT
@@ -164,7 +171,7 @@ qsub -b y -cwd -e tmp -o tmp -l vf=1G,h_vmem=1G "/ibscratch/wrayvisscher/Yan_Hol
 ```
 
 
-## 2.3 Mudge the files.
+##Mudge
 
 ```{r, eval=FALSE}
 # ----- On a specific file
@@ -199,9 +206,7 @@ qsub -b y -cwd  -e tmp -o tmp -l vf=30G,h_vmem=30G "/ibscratch/wrayvisscher/Yan_
 
 
 
-##Compute the genetic correlation
-
-
+##Compute GC
 ```{r, eval=FALSE}
 # ----- On a specific file
 # We have error for diseases F23-F25-F41-F52-F99. Several possibilities exist: heritability too low OR alleles with too strong effect.
@@ -255,9 +260,8 @@ done
 
 
 
-##Summarize in a clean file
+##Summarize
 For each pair, I need to get the result of LDSC and write them in a clean file.
-
 ```{r, eval=FALSE}
 ---
 cd /ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/GENETIC_CORRELATION/GENETIC_CORRELATION/
@@ -291,7 +295,7 @@ scp  uqyholtz@cluster.qbi.uq.edu.au://ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COM
 
 
 
-##Make a File with heritabilities
+##Heritabilities
 ```{r, eval=FALSE}
 echo "trait,h2,h2Se,lambda,meanChi2,intercept,interceptSe" > Heritability_of_UKB_diseases
 for i  in $(ls *sumstats.gz | sed 's/.sumstats.gz//' ) ; do
@@ -305,23 +309,12 @@ cat Heritability_of_UKB_diseases | grep -v ",$" > tmp
 mv tmp Heritability_of_UKB_diseases
 ```
 
---> This heritabilities are wrong compare to what is provided on the Neale Lab website..
-And I copy this file in a special folder for further analysis.
-And I transfert this file locally
-```{r, eval=FALSE}
-cd ~/Dropbox/QBI/3_UK_BIOBANK_COMO_PROJECT/1_FILES
-scp  uqyholtz@cluster.qbi.uq.edu.au://ibscratch/wrayvisscher/Yan_Holtz/3_UKB_COMO/GENETIC_CORRELATION/GWAS_SUMSTAT/*of_UKB_diseases* .
-```
-
-
-
-
-
-
-# 3- Summary Statistics of other study
-Summary statistics of GWAS on several published studies are available for many traits. There are here:
-```{r, eval=FALSE, echo=TRUE}
-/afm01/Q0286/GWA_sumstats/formatted
+This heritabilities are wrong compare to what is provided on the Neale Lab website. So it'is better to load their heritabilities.
+```{r}
+Herit=read.table("0_DATA/ukbb_all_h2part_results_small.txt", sep="\t", header = T)
+Herit=Herit[ substr(Herit$phenotype, 1, 1) %in% LETTERS , c(1:20) ]
+Herit=Herit %>% arrange(phenotype)
+datatable(Herit, rownames = FALSE, options = list(pageLength = 5) )
 ```
 
 
@@ -334,6 +327,168 @@ Summary statistics of GWAS on several published studies are available for many t
 
 
 
+#GC Description {.tabset .tabset-fade .tabset-pills}
+***
+```{r}
+# Load file
+UKBGC=read.table("0_DATA/Genetic_Correlation_of_UKB_diseases.txt.gz", header=T, sep=" ")
+
+# Number of diseases involdved?
+num=length( unique( c(as.character(UKBGC$p1), as.character(UKBGC$p2)) ) )
+
+# Number of pairs
+num_pair=nrow(UKBGC)
+
+#How many pairs are significant? (Absolute value and percentage)
+nsignif=UKBGC %>% filter(p<0.05) %>% nrow()
+```
+
+
+I now have the genetic correlation computed for many diseases. Sometimes the heritability of a disease was to low to use it in GCs. Finally I have GCs info for **`r num`** different diseases, and **`r num_pair` pairs** of diseases. Among them, `r nsignif` (`r nsignif / nrow(UKBGC) *100` %) are significatively different from 0.
+
+
+##Table
+All the significant GC values are stored in this interactive table:
+```{r}
+signif=UKBGC %>% filter(p<0.05)
+datatable(signif, rownames = FALSE, options = list(pageLength = 5) )
+```
+
+
+
+##Distribution
+```{r, warning=FALSE, message=FALSE}
+UKBGC %>%
+  ggplot( aes(x=rg)) +
+    geom_histogram(bins=1000)
+```
+
+
+##Sullivan comparison
+Can I trust my values? Can I compare with something well known? It looks to be more or less correct. For example, the paper "An Atlas of Genetic Correlations across Human Diseases and Traits" by Bulik-Sullivan et al. gives strong rg for Bipolar disBipolar Disorder (F31) with Major Depression (F32, F33) and with Schizophrenia (F20). Let's check the value of this diseases in my calculations:
+```{r}
+# Bipolar Disorder (F31) with Major Depression (F32, F33) with Schizophrenia (F20)
+to_keep=c("F20","F31","F32","F33")
+UKBGC %>% filter(p1 %in% to_keep)  %>% filter(p2 %in% to_keep)
+```
+
+
+
+
+##Extreme values
+What are the extreme values? These extreme values have really high standard deviation. They are not even significatively different from 0!
+```{r, warning=FALSE, message=FALSE}
+tmp=UKBGC %>% 
+  arrange(desc(abs(rg))) %>% 
+  select(p1, p2, rg, se, z, p) %>%
+  head(100) %>%
+  left_join(. , ICD[,c("coding_L3", "meaning_L3")], by=c("p1"="coding_L3")) %>% 
+  left_join(. , ICD[,c("coding_L3", "meaning_L3")], by=c("p2"="coding_L3")) %>% 
+  unique() %>%
+  head()
+datatable(tmp, rownames = FALSE, options = list(pageLength = 5) )
+```
+
+Let's check the extreme AND significant genetic correlation. It is completely different, the highest significant GC is -1.7269.
+```{r}
+tmp=UKBGC %>% 
+  arrange(desc(abs(rg))) %>% 
+  filter(p<0.05) %>%
+  select(p1, p2, rg, se, z, p) %>%
+  head(100) %>%
+  left_join(. , ICD[,c("coding_L3", "meaning_L3")], by=c("p1"="coding_L3")) %>% 
+  left_join(. , ICD[,c("coding_L3", "meaning_L3")], by=c("p2"="coding_L3")) %>% 
+  unique() %>%
+  head()
+datatable(tmp, rownames = FALSE, options = list(pageLength = 5) )
+```
+
+
+Let's check the lowest pvalues?
+```{r}
+tmp=UKBGC %>% 
+  arrange(p) %>% 
+  filter(p<0.05) %>%
+  select(p1, p2, rg, se, z, p) %>%
+  head(100) %>%
+  left_join(. , ICD[,c("coding_L3", "meaning_L3")], by=c("p1"="coding_L3")) %>% 
+  left_join(. , ICD[,c("coding_L3", "meaning_L3")], by=c("p2"="coding_L3")) %>% 
+  unique() %>%
+  head() 
+```
+
+
+
+##Heatmap
+Can I check a heatmap of this GC for mental disease??
+```{r}
+UKBGC %>%
+  filter(substr(p1, 1, 1)=="F") %>%
+  filter(substr(p2, 1, 1)=="F") %>%
+  ggplot( aes(x=p1, y=p2, fill=abs(rg))) +
+    geom_tile(color="orange")
+```
+
+A heatmap for all the disease that have at least one strong correlation?
+```{r, fig.height=10, fig.width=10}
+tmp=UKBGC %>%
+  filter( p<0.01) %>%
+  select(p1,p2)
+tokeep=unique(c(as.character(tmp$p1), as.character(tmp$p2)))
+
+UKBGC %>%
+  filter(p1 %in% tokeep) %>%
+  filter(p2 %in% tokeep) %>%
+  ggplot( aes(x=p1, y=p2, fill=rg)) +
+    geom_tile(color="orange")
+```
+
+
+
+##Per chapter
+Can I check the global GC into each disease chapter
+```{r, warning=FALSE}
+UKBGC %>%
+  mutate(letter1=substr(p1, 1, 1)) %>%
+  mutate(letter2=substr(p2, 1, 1)) %>%
+  filter(letter1==letter2) %>%
+  mutate(rg=abs(rg)) %>%
+  ggplot( aes(x=reorder(letter1, rg, FUN = median), y=rg, fill=letter1)) +
+    geom_boxplot(varwidth = TRUE) +
+    theme(legend.position="none") +
+    xlab("Disease group") +
+    ylab("Genetic correlation") +
+    ylim(0,4)
+```
+
+
+Same stuff, but only with significant rg. Would be better to do it with prevelence filter instead.
+```{r, warning=FALSE}
+UKBGC %>%
+  mutate(letter1=substr(p1, 1, 1)) %>%
+  mutate(letter2=substr(p2, 1, 1)) %>%
+  filter(letter1==letter2) %>%
+  mutate(rg=abs(rg)) %>%
+  filter(p<0.05) %>%
+  ggplot( aes(x=reorder(letter1, rg, FUN = median), y=rg, fill=letter1)) +
+    geom_boxplot(varwidth = TRUE) +
+    theme(legend.position="none") +
+    xlab("Disease group") +
+    ylab("Genetic correlation") +
+    ylim(0,4)
+```
+
+Number of significant pairs for each group of disease? There is NO significant rg for the mental disease group! This make sense since we saw before that the prevalence of mental disease is not that high compared to other group. 
+```{r, warning=FALSE}
+UKBGC %>%
+  mutate(letter1=substr(p1, 1, 1)) %>%
+  mutate(letter2=substr(p2, 1, 1)) %>%
+  filter(letter1==letter2) %>%
+  filter(p<0.05) %>%
+  group_by(letter1) %>%
+  count() %>%
+  arrange(desc(n))
+```
 
 
 
@@ -350,12 +505,64 @@ Summary statistics of GWAS on several published studies are available for many t
 
 
 
+#Heritability description {.tabset .tabset-fade .tabset-pills}
+
+```{r, warning=FALSE}
+#I add a column to check if the heritability is significatively different from 0, and I add the definition of the disease.
+Herit = Herit %>% 
+  mutate(signif=ifelse( h2_p < 0.05, "yes", "no")) %>% 
+  arrange(desc(h2_liability)) %>% 
+  left_join(. , ICD, by=c("phenotype"="coding_L3")) %>% 
+  select(phenotype, N, N_case, N_control, prevelence, h2_liability, h2_liability_se, h2_p, signif, meaning_L1, meaning_L2, meaning_L3, short) %>% unique() 
+
+nsignif=Herit %>% filter(signif=="yes") %>% nrow()
+```
+
+I now have heritabilities for `r nrow(Herit)` traits. `r nsignif`of them are significant.
 
 
 
+##Distribution
+Let's start by checking the distribution of these heritabilities? Most of them are very low. I even have a lot of value < 0. This is possible because I use LDSC to calculate these heritabilities.
+```{r}
+ggplot(Herit, aes(x=h2_liability)) + 
+  geom_histogram(fill="skyblue", color="grey", bins=50)
+```
 
 
+##Most heritable
+What are the 10 biggest heritability?
+```{r}
+tmp=Herit %>% arrange(desc(h2_liability)) %>% head(10)
+datatable(tmp, rownames = FALSE, options = list(pageLength = 5) )
+```
 
+##Per group
+Visualise heritability of each group
+```{r, fig.height=7, fig.width=12}
+Herit %>%
+  arrange(meaning_L1, h2_liability) %>%
+  mutate(phenotype=factor(phenotype, phenotype)) %>%
+  mutate(h2_liability = ifelse(h2_liability>0, h2_liability,0 )) %>%
+  filter(short != "unclassified") %>%
+  ggplot( aes(x=phenotype, y=h2_liability, color=log(h2_liability))) +
+    geom_point() +
+    coord_flip() +
+    facet_wrap(~short, scale="free_y", ncol=6) +
+    theme(
+      legend.position="none"
+    ) +
+    xlab("Heritability ('liability h2')") +
+    ylab("")
+```
+
+##Link with prevalence
+What is the link between Heritability and prevalence?
+```{r}
+Herit %>%
+  ggplot( aes(y=h2_liability, x=prevelence*100)) +
+    geom_point()
+```
 
 
 
