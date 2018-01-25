@@ -424,7 +424,7 @@ as.data.frame( data[1:5, 1:5] )</code></pre>
 <h1><span class="header-section-number">5</span> Heritability</h1>
 <hr />
 <p>Heritabilities of 303 diseaseas have been recovered from the Neale’s lab website. We have 14 mental diseases here.</p>
-<pre class="r"><code>Herit=read.table(&quot;0_DATA/ukbb_all_h2part_results.txt&quot;, sep=&quot;\t&quot;, header = T)
+<pre class="r"><code>Herit=read.table(&quot;0_DATA/ukbb_all_h2part_results.txt.gz&quot;, sep=&quot;\t&quot;, header = T)
 Herit=Herit[ substr(Herit$phenotype, 1, 1) %in% LETTERS , c(1:20) ]
 Herit=Herit %&gt;% arrange(phenotype)
 #dim(Herit)
