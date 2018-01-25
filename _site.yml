@@ -11,6 +11,11 @@ navbar:
       href: 2_Exploratory_Analysis.html
     - text: "Como"
       href: 3_Comorbidity_Analysis.html
+    - text: "Genet Cor"
+      href: 5_Compute_GeneticCorrelation
+      
+      
+      
 output:
   html_document:
       theme: "lumen"
