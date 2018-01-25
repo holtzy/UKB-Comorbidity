@@ -479,9 +479,9 @@ tmp=comoL2_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% he
 datatable(tmp, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
-###Level1
+###Level3
 ```{r}
-tmp=comoL3_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% head(50)
+tmp=comoL3_long %>% filter(disease1 != disease2) %>% arrange(desc(value)) %>% droplevels() %>% head(50)
 datatable(tmp, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
@@ -666,7 +666,7 @@ What are the 5 strongest comorbidity index?
 
 ###Level1
 ```{r}
-tmp=CI_L1_long %>% arrange(desc(value)) %>% head(100)
+tmp=CI_L1_long %>% arrange(desc(value)) %>% head(50)
 datatable(tmp, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
@@ -674,7 +674,7 @@ datatable(tmp, rownames = FALSE , options = list(pageLength = 5) )
 
 ###Level2
 ```{r}
-tmp=CI_L2_long %>% arrange(desc(value)) %>% head(100)
+tmp=CI_L2_long %>% arrange(desc(value)) %>% head(50)
 datatable(tmp, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
@@ -689,8 +689,8 @@ tab=CI_L3_long %>%
   left_join(., comoL3_long, by=c("D1"="disease1", "D2"="disease2")) %>%
   left_join(., tmp, by=c("D1"="disease1")) %>%
   left_join(., tmp, by=c("D2"="disease1")) %>%
-  arrange(desc(value.x)) %>% head(10)
-#datatable(tab, rownames = FALSE , options = list(pageLength = 5) )
+  arrange(desc(value.x)) %>% head(20)
+datatable(tab, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
 And what about the value < 1?
@@ -702,7 +702,8 @@ tab=CI_L3_long %>%
   left_join(., tmp, by=c("D1"="disease1")) %>%
   left_join(., tmp, by=c("D2"="disease1")) %>%
   rowwise() %>% mutate(occurence_mean = mean(c(occurence.x, occurence.y))) %>%
-  arrange(value.x, desc(occurence_mean))
+  arrange(value.x, desc(occurence_mean)) %>%
+  head(100)
 datatable(tab, rownames = FALSE , options = list(pageLength = 5) )
 ```
 
@@ -716,9 +717,8 @@ tab=CI_L3_long %>%
   left_join(., tmp, by=c("D2"="disease1")) %>%
   rowwise() %>% mutate(occurence_mean = mean(c(occurence.x, occurence.y))) %>%
   arrange(value.x, desc(occurence_mean)) 
-a=tab  %>% filter(occurence.x>10000, occurence.y>10000)
+a=tab  %>% filter(occurence.x>15000, occurence.y>15000)
 datatable(a, rownames = FALSE , options = list(pageLength = 5) )
-
 ```
 
 
