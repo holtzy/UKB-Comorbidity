@@ -1,0 +1,280 @@
+
+---
+title: "Genetic correlation"
+author: "by [Yan Holtz](https://github.com/holtzy/) - `r format(Sys.time(), '%d %B %Y')`"
+---
+
+
+```{r echo=FALSE}
+# Just to add space between the introduction of the document
+knitr::asis_output(htmltools::htmlPreserve("<br><br>"))
+```
+
+
+
+
+This document aims to make the link between comorbidity and genetic correlations.
+
+  
+```{r, message=FALSE, warning=FALSE}
+library(rmdformats)
+library(tidyverse)
+library(plotly)
+library(ggExtra)
+library(igraph)
+library(ggraph)
+library(RColorBrewer)
+```
+
+
+
+
+
+
+
+
+
+#Load data {.tabset .tabset-fade .tabset-pills}
+***
+
+##Comorbidity Index (CI)
+All the comorbidity occurence and comorbity index data are stored in the same file, made in script 2.
+```{r}
+# This file has a lot of interesting R objects
+load("0_DATA/Como_Objects.R")
+```
+
+
+##Genetic Correlation(GC)
+Genetic correlation have been calculated on the 642 GWAS summary statistics of disease provided by the NealLabs using the LDSC software.
+Note that over the 642 diseases, some diseases had to low h2 to allow GC calculattion. Thus, only about 380 diseases are available in this data, 72000 pairs.
+```{r}
+LDHubGC = read.table("0_DATA/LD-Hub_genetic_correlation_221x221_no_ENIGMA.csv.gz", header = TRUE, na.strings = "/", sep=";", dec=",")
+UKBGC=read.table("0_DATA/Genetic_Correlation_of_UKB_diseases.txt.gz", header=T, sep=" ")
+```
+
+
+
+##Heritability
+Heritability are available for the 642 traits of the GWAS sumstat of Neallab. I calculated it my self using LDSC (see script #4).
+Moreover, these herit are available for download on their website.
+```{r}
+
+# Nealelab version
+# Recovered from the Neale Lab:
+# This file has 770 column and 2420 diseases. So many information for each disease.
+# We have 14 mental diseases here. And 642 diseases in total.
+Herit=read.table("0_DATA/ukbb_all_h2part_results_small.txt", sep="\t", header = T)
+Herit=Herit[ substr(Herit$phenotype, 1, 1) %in% LETTERS , c(1:20) ]
+Herit=Herit %>% arrange(phenotype)
+```
+
+
+## ICD classification
+We can load this file that has already been formatted in the step 0 of this pipeline.
+```{r}
+#Read the file
+load("0_DATA/WHO_disease_classification_clean.R")
+```
+
+
+
+
+
+
+
+
+
+
+#Link GC - Heritability
+***
+GC is calculated for a pair, heritability for a single disease. This chart represents the GC of a pair (Y axis) and the mean heritability of this pair (X axis)
+```{r, warning=FALSE}
+
+#
+tmp=UKBGC %>% select(p1, p2, rg) %>% 
+  filter(!is.na(rg)) %>%
+  left_join(., Herit, by=c("p1"="phenotype")) %>%
+  select("p1", "p2", "rg", "h2_liability", "h2_liability_se") %>%
+  left_join(., Herit, by=c("p2"="phenotype")) %>%
+  select("p1", "p2", "rg", "h2_liability.x", "h2_liability_se.x", "h2_liability.y", "h2_liability_se.y") 
+
+#
+tmp %>% 
+  ggplot( aes(x=h2_liability.y, y=abs(rg))) + 
+    geom_point()
+```
+
+
+
+
+
+
+
+
+
+
+# 3- Link GC - CI {.tabset .tabset-fade .tabset-pills}
+***
+
+In order to study different correlation I start by building a general dataset
+```{r, warning=F, message=F}
+
+# First step: merging information of both CI and GC. I take care that the pairs can be in both side...
+a=CI_L3_long %>% 
+  mutate(D1_code=gsub(" .*","",D1)) %>%
+  mutate(D2_code=gsub(" .*","",D2)) %>%
+  left_join(., UKBGC, by = c("D1_code" = "p1", "D2_code" = "p2")) %>%
+  filter(!is.na(rg))
+b=CI_L3_long %>% 
+  mutate(D1_code=gsub(" .*","",D1)) %>%
+  mutate(D2_code=gsub(" .*","",D2)) %>%
+  left_join(., UKBGC, by = c("D1_code" = "p2", "D2_code" = "p1")) %>%
+  filter(!is.na(rg))
+don=rbind(a,b) %>% mutate(CI=value, rg_se=se, rg_p=p) %>% select(D1_code, D1, D2_code, D2, CI, rg, rg_se, rg_p) 
+
+
+# Second step: I add the heritability of traits and prevalence calculated by Neal Group
+don=don %>% 
+  left_join(., Herit, by=c("D1_code"="phenotype") ) %>% rename(D1_prevalence=prevelence, D1_h2_liability=h2_liability, D1_h2_liability_se=h2_liability_se, D1_h2_p=h2_p) %>%
+  select(D1_code, D1, D2_code, D2, CI, rg, rg_se, rg_p, starts_with("D1")) %>%
+  left_join(., Herit, by=c("D2_code"="phenotype") ) %>% rename(D2_prevalence=prevelence, D2_h2_liability=h2_liability, D2_h2_liability_se=h2_liability_se, D2_h2_p=h2_p) %>%
+  select(D1_code, D1, D2_code, D2, CI, rg, rg_se, rg_p, starts_with("D1"), starts_with("D2")) 
+
+# Third step: I add ICD10 information
+don=don %>% 
+  left_join(., ICD, by=c("D1"="meaning_L3") ) %>% rename(D1_meaning_L1=meaning_L1, D1_meaning_L2=meaning_L2, ) %>%
+  select(D1_code, D1, D2_code, D2, CI, rg, rg_se, rg_p, starts_with("D1"), starts_with("D2")) %>%
+  left_join(., ICD, by=c("D2"="meaning_L3") ) %>% rename(D2_meaning_L1=meaning_L1, D2_meaning_L2=meaning_L2, ) %>%
+  select(D1_code, D1, D2_code, D2, CI, rg, rg_se, rg_p, starts_with("D1"), starts_with("D2")) %>%
+  unique()
+```
+
+
+##GC - como
+Plot the relationship between Genetic correlation and Comorbidity Index
+```{r, warning=F}
+# Then plot it
+p=don %>% 
+  #filter(value!=0) %>%
+  mutate(text=paste("Disease1: ", D1, "\n", "Disease2: ", D2, sep="" )) %>%
+  ggplot( aes(x=CI, y=abs(rg))) +
+    geom_point( aes(text=text), size=1, alpha=0.5) +
+    #scale_x_log10() +
+    ylab("Genetic correlation (Absolute value)") +
+    xlab("Comorbidity Index")  
+p
+```
+
+##Log scale
+Same thing but with logaritmic X scale. This graph is interactive, you get the name of the diseases if you hover the point.
+```{r, warning=F}
+# Then plot it
+p=don %>% 
+  #filter(value!=0) %>%
+  mutate(text=paste("Disease1: ", D1, "\n", "Disease2: ", D2, sep="" )) %>%
+  ggplot( aes(x=CI, y=abs(rg))) +
+    geom_point( aes(text=text), size=1, alpha=0.5) +
+    scale_x_log10() +
+    ylab("Genetic correlation (Absolute value)") +
+    xlab("Comorbidity Index (Log scale)")  
+ggplotly(tooltip="text")
+```
+
+##Prevalence-GC
+Actually we have a problem, there are too many diseases with really low GC and very high standard error. This is just noise. Probably due to disease with too low prevalence? In the fllowing chart, we can see that indeed, when a disease with small prevalence is present in the pair, we tend to have very high standard error around the genetic correlation.
+```{r, warning=FALSE}
+don %>%
+  mutate( mymin = pmin(D1_prevalence, D2_prevalence) ) %>%
+  ggplot( aes(x=mymin*100, y=rg_se) ) +
+    geom_point(alpha=0.2, size=0.5) +
+    scale_y_log10() +
+    scale_x_log10() +
+    xlab("smallest prevalence of the pair") +
+    ylab("Standard error of rg (in %)")
+```
+
+
+The same idea is that we have a bigger range of RGs when prevalence is low. So can we really trust these genetic correlation? Probably yes for diseases with a sufficient prevalence?
+```{r, warning=FALSE}
+don %>%
+  mutate( mymin = pmin(D1_prevalence, D2_prevalence) ) %>%
+  ggplot( aes(x=mymin*100, y=rg) ) +
+    geom_point(alpha=0.2, size=0.5) +
+    scale_x_log10() +
+    xlab("Genetic correlation (RG)") +
+    ylab("Standard error of rg (in %)")
+
+```
+
+##Filter GC
+So recheck the relationship between CI and GC but keeping only significant GC?
+```{r, warning=F}
+# Then plot it
+p=don %>% 
+  filter( rg_p<0.05, CI<15) %>%
+  mutate(text=paste( "Disease1: ", D1, " | h2: ", round(D1_h2_liability,2), " (", round(D1_h2_liability_se,2), ")", " | prev: ", round(D1_prevalence*100,2), "%", "\n", "Disease2: ", D2, " | h2: ", round(D2_h2_liability,2), " (", round(D2_h2_liability_se,2), ")", " | prev: ", round(D2_prevalence*100,2), "%")) %>%
+  ggplot( aes(x=CI, y=abs(rg))) +
+    #geom_smooth(method = "lm", se = TRUE) +
+    geom_point( aes(text=text, alpha=rg_p), size=1, alpha=0.5) +
+    #scale_x_log10() +
+    ylab("Genetic correlation (rg)") +
+    xlab("Comorbidity Index") +
+    ylim(0,2)
+p
+```
+
+##Filter prevalence
+So recheck the relationship between CI and GC but keeping only pairs with minimum prevalence of 0.5%
+```{r, warning=F}
+# Then plot it
+p=don %>% 
+  mutate( mymin = pmin(D1_prevalence, D2_prevalence)*100 ) %>%
+  filter( mymin>0.5) %>%
+  mutate(text=paste("Disease1: ", D1, "\n", "Disease2: ", D2, sep="" )) %>%
+  ggplot( aes(x=CI, y=abs(rg))) +
+    #geom_smooth(method = "lm", se = TRUE) +
+    geom_point( aes(text=text, alpha=rg_p), size=1, alpha=0.5) +
+    #scale_x_log10() +
+    ylab("Genetic correlation (rg)") +
+    xlab("Comorbidity Index") +
+    ylim(0,2)
+p
+``` 
+
+
+
+
+##Schyzophrenia
+Biggest genetic correlation of Schizophrenia
+```{r}
+tmp=don %>% 
+  filter(D1_code=="F20" ) %>% 
+  arrange(desc(rg)) %>%
+  select(D1_code, D1, D2_code, D2, CI, rg, rg_se, rg_p) %>%
+  mutate(CI=round(CI,2), rg=round(rg,2), rg_se=round(rg_se,2), rg_p=round(rg_p,3))
+
+tmp %>% ggplot( aes(x=CI, y=rg)) +
+  geom_point()
+
+tmp %>% arrange(CI) %>% tail(10) %>% mutate(linked_disease=ifelse(D1_code=="F20", D2, D1)) %>% mutate(linked_disease=factor(linked_disease,linked_disease)) %>%
+  ggplot( aes(x=linked_disease, y=CI, fill=CI)) +
+    geom_bar(stat="identity") +
+    coord_flip() +
+    xlab("") +
+    theme(legend.position="none") +
+    ylab("comorbidity index") +
+    ggtitle(paste("10 highest Phenotype link between ", "F20", " and other diseases", sep=""))
+
+```
+
+
+
+
+
+
+
+
+
+
+
