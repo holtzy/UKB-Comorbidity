@@ -12,7 +12,7 @@ The UK Biobank is a huge dataset giving information on the health of about 500 0
 - **UKB general description**: a general explorative analysis on the UKB. How many people? Their main characteristics? Main diseases observed? Where are they?
 - **Comorbidity**: Analyse the occurence of each pair of disease, compute comorbidity index, visualize it.
 - **Genetic correlation**: Compute the genetic correlation for each pair of 600 diseases and describe it
-- **Link Como - GC**:
+- **Link Como - GC**: Is comorbidity controled by genetic or not?
 
 See this analysis as a website [here](https://holtzy.github.io/UKB-Comorbidity/index.html).
 
