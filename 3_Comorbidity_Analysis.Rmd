@@ -60,7 +60,7 @@ It is important to note that a few groups will be excluded from the analysis:
 Just a memo for the link letter - chapter
 ```{r, warning=FALSE, message=FALSE, align="center"}
 tmp = ICD %>% mutate(letter=substr(meaning_L2,1,1)) %>% select( meaning_L1, letter) %>% droplevels() %>% unique()
-datatable(tmp, rownames = FALSE , width="60%", options = list(pageLength = 5, dom = 't') )
+datatable(tmp, rownames = FALSE , width="60%", options = list(pageLength = 40, dom = 't') )
 ```
 
 
@@ -78,7 +78,7 @@ rownames(comoL1)=colnames(comoL1)
 comoL1[lower.tri(comoL1)] <- NA
 
 # Remove chapter 20 to 22 because it is not really disease
-tokeep=which( ! colnames(comoL1) %in% c("External.Causes","Factor.influencing","Special") )
+tokeep=which( ! colnames(comoL1) %in% c("External.Causes", "Factor.influencing", "Special") )
 comoL1= comoL1[ tokeep, tokeep ]
 
 # Remove chapter with less than 100 case (remove perinatal chapter that is quite useless with 41 cases in total for the whole chapter)
@@ -631,26 +631,34 @@ CI_L2_long %>%
 
 ###Violin
 With a log scale we can compare the groups. Interesting to see that highest comorbidity index are the one concerning Mental diseases. The group O is impressive. O = Chapter XV = Pregnancy, childbirth and the puerperium
-```{r, warning=FALSE, message=FALSE, fig.width=13, fig.height=4}
-CI_L2_long %>%
-  mutate(level1.1=substring(D1,1,1)) %>%
-  mutate(level1.2=substring(D2,1,1)) %>%
-  mutate(group=ifelse(level1.1 == level1.2, level1.1, NA )) %>%
-  filter(!is.na(group)) %>%
-  mutate(color=ifelse(group=="F", "Mental Diseases", "Other")) %>%
+```{r, warning=FALSE, message=FALSE, fig.width=8, fig.height=9}
+library(ggridges)
+tmp <- ICD %>% select(meaning_L2, short)
+length(unique(ICD$meaning_L2))
+
+don <- CI_L2_long %>%
+  left_join(tmp, by=c("D1" = "meaning_L2")) %>%
+  left_join(tmp, by=c("D2" = "meaning_L2")) %>%
+  filter(short.x == short.y)
+
+png("~/Desktop/fig.png", width=800, height=500)
+don %>%
+  mutate(color=ifelse(short.y=="Mental", "Mental Diseases", "Other")) %>%
   droplevels() %>%
-  ggplot( aes(x=reorder(group, value), fill=color, colour=color, y=value+1)) + 
-    geom_violin(width=3) +
+  ggplot( aes(y=reorder(short.y, value), fill=short.y, fill=short.y, x=value+1)) + 
+    geom_density_ridges(scale=3) +
     theme_classic() +
-    geom_hline(yintercept=2, linetype="dashed") +
-    scale_y_log10() +
+    #geom_hline(yintercept=2, linetype="dashed") +
+    #scale_x_log10() +
     theme(
       legend.position="none",
       axis.line = element_blank(),
-      axis.title=element_text(size=12)
+      axis.text = element_text(size=15)
     ) +
-  xlab("Groups (level1)") +
-  ylab("Comorbidity Index (Log)")
+  xlab("Comorbidity Index") +
+  ylab("") +
+  xlim(0,40)
+dev.off()
 ```
 
 The comorbidity index is 1 if the pair of disease occurs only by chance. It is less than 1 if a disease prevent of developping the second one. It is over 1 if there is a comorbidity effect: having a disease increases the chance to develop the second one.
@@ -754,8 +762,9 @@ If we use clusterisation with pearson correlation. This time, we check if the pa
 
 #Hierarchical Edge Bundling (between groups) {.tabset .tabset-fade .tabset-pills}
 ***
-In the figure below, all the diseases of level2 are displayed around a circle. Dots size are proportional to the occurence of the disease. Color depends of disease group (22 groups). 2 diseases are interconnected only if their comorbidity index is over a certain threshold.
+In the figure below, all the diseases of level2 are displayed around a circle. Dots size are proportional to the occurence of the disease. Color depends of disease group (22 groups). 2 diseases are interconnected only if their comorbidity index is over a certain threshold.  
 
+First I prepare data:
 ```{r, warning=FALSE, message=FALSE}
 # Create edges data frame. I start with the leaf level only
 edges=ICD %>% filter(meaning_L2 %in% colnames(comoL2) ) %>% select(meaning_L1, meaning_L2) %>% unique
@@ -783,7 +792,8 @@ vertices$angle<-ifelse(vertices$angle < -90, vertices$angle+180, vertices$angle)
 vertices = vertices %>% mutate( labels=name)
 
 # Add the upper part of the tree = not final leaves to edges
-top = ICD %>% select(meaning_L1) %>% mutate(origine=0) %>% select(origine, meaning_L1) %>% unique %>% mutate()
+toremove=c("Chapter XX External causes of morbidity and mortality", "Chapter XXI Factors influencing health status and contact with health services", "Chapter XXII Codes for special purposes")
+top = ICD %>% select(meaning_L1) %>% mutate(origine=0) %>% select(origine, meaning_L1) %>% unique %>% filter(! meaning_L1 %in% toremove)
 colnames(top)=c("from", "to")
 edges=rbind(top, edges)
 
@@ -795,41 +805,266 @@ back_color="white"
 
 # Create graph structure
 mygraph <- graph_from_data_frame( edges, vertices = vertices)
+```
 
+
+```{r}
+# Vérification
+ggraph(mygraph, layout = 'dendrogram', circular = TRUE) +
+  geom_edge_diagonal()
+```
+
+
+A first function that displays the full name of diseases.
+```{r}
 plot_bundle=function(mythres){
-# Transform the adjacency connection of comorbidity index in 2 vectors: from and to.
-threshold=mythres
-connexions = CI_L2_long %>% filter(value>threshold) %>% select(D1, D2)
-from = match( connexions$D1, vertices$name)
-to = match( connexions$D2, vertices$name)
-
-# Do the graph
-p=ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
-    geom_conn_bundle(data = get_con(from = from, to = to), alpha = 0.2, tension = 0.9, aes(size=11, colour = ..index..)) + 
-    # Make the size depends how often we see the disease?
-    geom_node_point(aes(filter = leaf, x = x*1.05, y=y*1.05, size=val, colour=meaning_L1), alpha=0.6) +
-    scale_color_manual(values= colorRampPalette(brewer.pal(9,"Paired"))(22)[sample(seq(1,22),22)]) +
-    scale_size_continuous(range = c(0.5,11)) +
-    geom_node_text(aes(x = x*1.1, y=y*1.1, filter = leaf, label=labels, angle = angle, color=meaning_L1, hjust=hjust), size=1.5, alpha=1) +
-    coord_fixed() +
-    labs(x="", y="") +
-    theme_classic() +
-    theme(
-        legend.position="none",
-        axis.title=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(),
-        line = element_blank(),
-        plot.margin=unit(c(0,0,0,0),"cm"),
-        plot.background = element_rect(fill = back_color),
-        panel.background = element_rect(fill = back_color, colour=back_color)
-    ) +
-    expand_limits(x = c(-2, 2), y = c(-2, 2))
-    #geom_segment( x = 2, y = 2, xend = 10, yend = 10, colour = "black", alpha=1, size=4 , inherit.aes = FALSE ) +
-
-  return(p)
+  # Transform the adjacency connection of comorbidity index in 2 vectors: from and to.
+  threshold=mythres
+  connexions = CI_L2_long %>% filter(value>threshold) %>% select(D1, D2)
+  from = match( connexions$D1, vertices$name)
+  to = match( connexions$D2, vertices$name)
+  
+  # Do the graph
+  p=ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
+      geom_conn_bundle(data = get_con(from = from, to = to), alpha = 0.2, tension = 0.9, aes(size=11, colour = ..index..)) + 
+      # Make the size depends how often we see the disease?
+      geom_node_point(aes(filter = leaf, x = x*1.05, y=y*1.05, size=val, colour=meaning_L1), alpha=0.6) +
+      scale_color_manual(values= colorRampPalette(brewer.pal(9,"Paired"))(22)[sample(seq(1,22),22)]) +
+      scale_size_continuous(range = c(0.5,11)) +
+      geom_node_text(aes(x = x*1.1, y=y*1.1, filter = leaf, label=labels, angle = angle, color=meaning_L1, hjust=hjust), size=1.5, alpha=1) +
+      coord_fixed() +
+      labs(x="", y="") +
+      theme_classic() +
+      theme(
+          legend.position="none",
+          axis.title=element_blank(),
+          axis.text=element_blank(),
+          axis.ticks=element_blank(),
+          line = element_blank(),
+          plot.margin=unit(c(0,0,0,0),"cm"),
+          plot.background = element_rect(fill = back_color),
+          panel.background = element_rect(fill = back_color, colour=back_color)
+      ) +
+      expand_limits(x = c(-2, 2), y = c(-2, 2))
+      #geom_segment( x = 2, y = 2, xend = 10, yend = 10, colour = "black", alpha=1, size=4 , inherit.aes = FALSE ) +
+  
+    return(p)
 }
 ```
+
+
+
+A Second function that displays the letters only name of diseases.
+```{r}
+plot_bundle2=function(mythres){
+
+  set.seed(123)
+  
+  # Transform the adjacency connection of comorbidity index in 2 vectors: from and to.
+  threshold=mythres
+  connexions = CI_L2_long %>% filter(value>threshold) %>% select(D1, D2)
+  myvalue = CI_L2_long %>% filter(value>threshold) %>% select(value)
+  from = match( connexions$D1, vertices$name)
+  to = match( connexions$D2, vertices$name)
+  
+  # Do the graph
+  ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
+      geom_conn_bundle(data = get_con(from = from, to = to, value=myvalue$value), alpha = 0.7, tension = 1, aes(colour=..index..)) + 
+      # Make the size depends how often we see the disease?
+      geom_node_point(aes(filter = leaf, x = x*1.05, y=y*1.05, size=val, colour=meaning_L1), alpha=0.6) +
+      scale_color_manual(values= rep(brewer.pal(9,"Paired"),9)) +
+      scale_size_continuous(range = c(0.3,11)) +
+      geom_node_text(aes(x = x*1.11, y=y*1.11, filter = leaf, label=gsub(" .*", "", labels), angle = angle, color=meaning_L1, hjust=hjust), size=1.8, alpha=1) +
+      coord_fixed() +
+      labs(x="", y="") +
+      theme_classic() +
+      theme(
+          legend.position="none",
+          axis.title=element_blank(),
+          axis.text=element_blank(),
+          axis.ticks=element_blank(),
+          line = element_blank(),
+          plot.margin=unit(c(0,0,0,0),"cm"),
+          plot.background = element_rect(fill = back_color),
+          panel.background = element_rect(fill = back_color, colour=back_color)
+      ) +
+      expand_limits(x = c(0,0), y = c(0,0))
+      #geom_segment( x = 2, y = 2, xend = 10, yend = 10, colour = "black", alpha=1, size=4 , inherit.aes = FALSE ) +
+}
+```
+
+```{r}
+pdf("~/Desktop/img_start.pdf")
+# Outside only
+  set.seed(123)
+
+  # Do the graph
+  ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
+      geom_edge_diagonal(colour="grey", alpha=0.2) + 
+      # Make the size depends how often we see the disease?
+      #geom_node_point(aes(filter = leaf, x = x*1.05, y=y*1.05, size=val, colour=meaning_L1), alpha=0.6) +
+      scale_color_manual(values= rep(brewer.pal(9,"Paired"),9)) +
+      scale_size_continuous(range = c(0.3,11)) +
+      geom_node_text(aes(x = x*1.11, y=y*1.11, filter = leaf, label=gsub(" .*", "", labels), angle = angle, color=meaning_L1, hjust=hjust), size=1.8, alpha=1) +
+      coord_fixed() +
+      labs(x="", y="") +
+      theme_classic() +
+      theme(
+          legend.position="none",
+          axis.title=element_blank(),
+          axis.text=element_blank(),
+          axis.ticks=element_blank(),
+          line = element_blank(),
+          plot.margin=unit(c(0,0,0,0),"cm"),
+          plot.background = element_rect(fill = back_color),
+          panel.background = element_rect(fill = back_color, colour=back_color)
+      ) +
+      expand_limits(x = c(0,0), y = c(0,0))
+dev.off()
+
+pdf("~/Desktop/img_start_with_nodeValue.pdf")
+# Outside only
+  set.seed(123)
+
+  # Do the graph
+  ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
+      geom_edge_diagonal(colour="grey", alpha=0.2) + 
+      # Make the size depends how often we see the disease?
+      geom_node_point(aes(filter = leaf, x = x*1.05, y=y*1.05, size=val, colour=meaning_L1), alpha=0.6) +
+      scale_color_manual(values= rep(brewer.pal(9,"Paired"),9)) +
+      scale_size_continuous(range = c(0.3,11)) +
+      geom_node_text(aes(x = x*1.11, y=y*1.11, filter = leaf, label=gsub(" .*", "", labels), angle = angle, color=meaning_L1, hjust=hjust), size=1.8, alpha=1) +
+      coord_fixed() +
+      labs(x="", y="") +
+      theme_classic() +
+      theme(
+          legend.position="none",
+          axis.title=element_blank(),
+          axis.text=element_blank(),
+          axis.ticks=element_blank(),
+          line = element_blank(),
+          plot.margin=unit(c(0,0,0,0),"cm"),
+          plot.background = element_rect(fill = back_color),
+          panel.background = element_rect(fill = back_color, colour=back_color)
+      ) +
+      expand_limits(x = c(0,0), y = c(0,0))
+dev.off()
+
+
+# first connection
+pdf("~/Desktop/img_first_connection.pdf")
+  set.seed(123)
+  
+  # Transform the adjacency connection of comorbidity index in 2 vectors: from and to.
+  threshold=40
+  connexions = CI_L2_long %>% filter(value>threshold) %>% select(D1, D2, value) %>% arrange(desc(value))  %>% filter(value<50)
+  myvalue = CI_L2_long %>% filter(value>threshold) %>% select(value) %>% head(1)
+  from = match( connexions$D1, vertices$name)
+  to = match( connexions$D2, vertices$name)
+  
+  # Do the graph
+  ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
+      geom_edge_diagonal(colour="grey", alpha=0.2) + 
+      geom_conn_bundle(data = get_con(from = from, to = to, value=myvalue$value), alpha = 0.7, tension = 1, aes(colour=..index..)) + 
+      # Make the size depends how often we see the disease?
+      geom_node_point(aes(filter = leaf, x = x*1.05, y=y*1.05, size=val, colour=meaning_L1), alpha=0.6) +
+      scale_color_manual(values= rep(brewer.pal(9,"Paired"),9)) +
+      scale_size_continuous(range = c(0.3,11)) +
+      geom_node_text(aes(x = x*1.11, y=y*1.11, filter = leaf, label=gsub(" .*", "", labels), angle = angle, color=meaning_L1, hjust=hjust), size=1.8, alpha=1) +
+      coord_fixed() +
+      labs(x="", y="") +
+      theme_classic() +
+      theme(
+          legend.position="none",
+          axis.title=element_blank(),
+          axis.text=element_blank(),
+          axis.ticks=element_blank(),
+          line = element_blank(),
+          plot.margin=unit(c(0,0,0,0),"cm"),
+          plot.background = element_rect(fill = back_color),
+          panel.background = element_rect(fill = back_color, colour=back_color)
+      ) +
+      expand_limits(x = c(0,0), y = c(0,0))
+dev.off()
+```
+
+
+```{r}
+pdf("~/Desktop/img_70.pdf")
+plot_bundle(70)
+dev.off()
+
+pdf("~/Desktop/img_65.pdf")
+plot_bundle2(65)
+dev.off()
+
+pdf("~/Desktop/img_60.pdf")
+plot_bundle2(60)
+dev.off()
+
+pdf("~/Desktop/img_55.pdf")
+plot_bundle2(55)
+dev.off()
+
+pdf("~/Desktop/img_50.pdf")
+plot_bundle2(50)
+dev.off()
+
+pdf("~/Desktop/img_45.pdf")
+plot_bundle2(45)
+dev.off()
+
+pdf("~/Desktop/img_40.pdf")
+plot_bundle2(40)
+dev.off()
+
+pdf("~/Desktop/img_35.pdf")
+plot_bundle2(35)
+dev.off()
+
+pdf("~/Desktop/img_30.pdf")
+plot_bundle2(30)
+dev.off()
+
+pdf("~/Desktop/img_35.pdf")
+plot_bundle2(35)
+dev.off()
+
+pdf("~/Desktop/img_30.pdf")
+plot_bundle2(30)
+dev.off()
+
+pdf("~/Desktop/img_25.pdf")
+plot_bundle2(25)
+dev.off()
+
+pdf("~/Desktop/img_20.pdf")
+plot_bundle2(20)
+dev.off()
+
+pdf("~/Desktop/img_15.pdf")
+plot_bundle2(15)
+dev.off()
+
+pdf("~/Desktop/img_10.pdf")
+plot_bundle2(10)
+dev.off()
+
+pdf("~/Desktop/img_5.pdf")
+plot_bundle2(5)
+dev.off()
+```
+
+##Threshold=40
+
+```{r, warning=FALSE}
+png("IMG/Edge_Bundle_Como_L2_thres40.png", width=200, height=200, units = "mm", res=300)
+plot_bundle(30)
+dev.off()
+```
+
+![img](IMG/Edge_Bundle_Como_L2_thres40.png)
+
 
 ##Threshold=30
 

@@ -1,36 +1,33 @@
-name: "Comorbidity in the UK Biobank"
-output_dir: "."
+name: Comorbidity in the UK Biobank
+output_dir: '.'
 navbar:
-  title: "Comorbidity in the UK Biobank"
+  title: Comorbidity in the UK Biobank
   right:
-    - text: "Intro"
-      href: index.html
-    - text: "Get data"
-      href: 1_DataWrangling.html
-    - text: "explore UKB"
-      href: 2_Exploratory_Analysis.html
-    - text: "Como"
-      href: 3_Comorbidity_Analysis.html
-    - text: "Genet Cor"
-      href: 5_Compute_GeneticCorrelation.html
-    - text: "Link Genet-Como"
-      href: 6_Link_ComoGenet.html
-      
-      
-      
-      
-      
-      
+  - text: Intro
+    href: index.html
+  - text: Get data
+    href: 1_DataWrangling.html
+  - text: explore UKB
+    href: 2_Exploratory_Analysis.html
+  - text: Como
+    href: 3_Comorbidity_Analysis.html
+  - text: Genet Cor
+    href: 5_Compute_GeneticCorrelation.html
+  - text: Link Genet-Como
+    href: 6_Link_ComoGenet.html
 output:
   html_document:
-      theme: "lumen"
-      css: style.css
-      toc: FALSE
-      toc_float: TRUE
-      toc_depth: 2
-      number_sections: TRUE
-      df_print: "paged"
-      code_folding: "hide"
-      includes: 
-        after_body: footer.html
-        before_body: header.html
+    theme: lumen
+    css: style.css
+    toc: no
+    toc_float: yes
+    toc_depth: 2
+    number_sections: yes
+    df_print: paged
+    code_folding: hide
+    includes:
+      after_body: footer.html
+      before_body: header.html
+    lib_dir: site_libs
+    self_contained: no
+
